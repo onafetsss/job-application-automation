@@ -6,7 +6,7 @@ Four phases deliver the complete autonomous job application system. Phase 1 buil
 
 ## Phases
 
-- [ ] **Phase 1: Foundation** - DB schema, eligibility filter, dry-run mode, deduplication — the contract every later component depends on
+- [~] **Phase 1: Foundation** - DB schema, eligibility filter, dry-run mode, deduplication — the contract every later component depends on
 - [ ] **Phase 2: Ingest, Generate, and Email Apply** - Gmail ingestion, JobSpy scraping, AI cover letter generation, email submission, notifications — first live end-to-end run with zero LinkedIn risk
 - [ ] **Phase 3: LinkedIn Easy Apply** - Camoufox browser automation with anti-detection, challenge detection, conservative rate limiting
 - [ ] **Phase 4: Dashboard CRM and Additional Sources** - Web CRM dashboard with Gmail history import, Kalibrr native apply, and generic form apply
@@ -24,7 +24,21 @@ Four phases deliver the complete autonomous job application system. Phase 1 buil
   3. Dry-run mode processes jobs through the full filter pipeline and writes rejection/approval decisions to the log without submitting anything
   4. The eligibility config (eligibility.yaml) can be edited to change title keywords, location, or exclusions and the system reflects the new rules immediately on next run without code changes
   5. Every processed job has a full audit log entry: job ID, source, timestamp, filter decision, and reason
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+
+**Wave 1**
+- [ ] 01-PLAN-01-scaffold-db-schema.md — Project scaffold, pyproject.toml, SQLite engine, ORM models (Job/Application/AuditLogEntry), stub config and main.py boot
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 01-PLAN-02-filter-engine.md — Config loader (YAML→Pydantic), eligibility filter (pure function), cross-source deduplication with unit and integration tests
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 01-PLAN-03-dry-run-cli.md — Complete write_audit(), upgrade main.py to full dry-run pipeline, end-to-end CLI test
+
+Cross-cutting constraints:
+- `--dry-run` CLI flag (D-01) affects all three plans — must be wired through main.py in Wave 3
+- SQLite WAL mode must be set at DB init (Wave 1) — all later phases depend on this
 
 ### Phase 2: Ingest, Generate, and Email Apply
 **Goal**: The full pipeline runs end-to-end — Gmail job alerts and JobSpy scraped leads flow in, get filtered and deduplicated, AI selects the best resume and generates a tailored cover letter, applications submit via email, and Telegram notifications fire after each submission
@@ -72,7 +86,7 @@ Four phases deliver the complete autonomous job application system. Phase 1 buil
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 0/3 | Planned | - |
 | 2. Ingest, Generate, and Email Apply | 0/TBD | Not started | - |
 | 3. LinkedIn Easy Apply | 0/TBD | Not started | - |
 | 4. Dashboard CRM and Additional Sources | 0/TBD | Not started | - |
