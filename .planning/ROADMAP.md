@@ -28,13 +28,13 @@ Four phases deliver the complete autonomous job application system. Phase 1 buil
 Plans:
 
 **Wave 1**
-- [ ] 01-PLAN-01-scaffold-db-schema.md — Project scaffold, pyproject.toml, SQLite engine, ORM models (Job/Application/AuditLogEntry), stub config and main.py boot
+- [x] 01-PLAN-01-scaffold-db-schema.md — Project scaffold, pyproject.toml, SQLite engine, ORM models (Job/Application/AuditLogEntry), stub config and main.py boot
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 01-PLAN-02-filter-engine.md — Config loader (YAML→Pydantic), eligibility filter (pure function), cross-source deduplication with unit and integration tests
+- [x] 01-PLAN-02-filter-engine.md — Config loader (YAML→Pydantic), eligibility filter (pure function), cross-source deduplication with unit and integration tests
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 01-PLAN-03-dry-run-cli.md — Complete write_audit(), upgrade main.py to full dry-run pipeline, end-to-end CLI test
+- [x] 01-PLAN-03-dry-run-cli.md — Complete write_audit(), upgrade main.py to full dry-run pipeline, end-to-end CLI test
 
 **Gap Closure** *(after verification — both plans wave 1, independent, parallel-safe)*
 - [x] 01-04-PLAN.md — Add in-memory seen_hashes set to main.run() so dry-run catches within-batch URL duplicates (closes VERIFICATION truths 14 + 16)
@@ -57,7 +57,25 @@ Cross-cutting constraints:
   5. A Telegram notification arrives after each submission containing company name, role, resume used, and job URL
   6. When the system detects a CAPTCHA or auth challenge it pauses automation and fires a Telegram alert rather than silently failing or crashing
   7. A heartbeat signal is emitted on schedule so an extended silence triggers an alert
-**Plans**: TBD
+**Plans**: 5 plans
+Plans:
+
+**Wave 1**
+- [ ] 02-01-PLAN.md — FastAPI scaffold, Pydantic schemas, /ingest-lead endpoint, AgentConfig model, AuditEvent additions, Docker Compose, Dockerfile.api
+
+**Wave 2** *(blocked on Wave 1 completion — all three plans run in parallel)*
+- [ ] 02-02-PLAN.md — Gmail API client with OAuth2, historyId polling, /poll-gmail and /fetch-email-body endpoints
+- [ ] 02-03-PLAN.md — JobSpy runner, Kalibrr scraper, /scrape-jobspy and /scrape-kalibrr endpoints
+- [ ] 02-04-PLAN.md — Resume reader, profile loader, /select-resume endpoint, /write-application and /mark-submitted endpoints
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 02-05-PLAN.md — Six n8n workflow JSON files (gmail-ingest, jobspy-scrape, kalibrr-scrape, ai-apply-pipeline, error-handler, heartbeat), supporting GET endpoints, README
+
+Cross-cutting constraints:
+- n8n uses Docker service name `http://api:8000` for all FastAPI calls (never localhost)
+- All Claude API calls from n8n use Header Auth credential "anthropicApi" with x-api-key header
+- Gmail OAuth token must be obtained via scripts/gmail_oauth.py before deployment
+- N8N_ENCRYPTION_KEY must be generated and set before first n8n launch (never regenerated)
 
 ### Phase 3: LinkedIn Easy Apply
 **Goal**: LinkedIn Easy Apply submissions run autonomously at 15-20 per day with no account restriction — Camoufox is active, challenge detection pauses the run with an alert, and timing is randomized across a 6-8 hour window
@@ -91,6 +109,6 @@ Cross-cutting constraints:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 5/5 | Complete   | 2026-05-27 |
-| 2. Ingest, Generate, and Email Apply | 0/TBD | Not started | - |
+| 2. Ingest, Generate, and Email Apply | 0/5 | Planning complete | - |
 | 3. LinkedIn Easy Apply | 0/TBD | Not started | - |
 | 4. Dashboard CRM and Additional Sources | 0/TBD | Not started | - |
