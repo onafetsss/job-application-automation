@@ -38,7 +38,8 @@ async def generate_screening_answers(
     parses the JSON response, and stores the answers on the Job record.
 
     Args:
-        payload: GenerateScreeningAnswersIn with job_id, screening_questions, job_description, job_title.
+        payload: GenerateScreeningAnswersIn with job_id, screening_questions, job_description,
+            job_title.
         request: FastAPI Request — used to access app.state.profile_config.
         session: AsyncSession — DB session for reading/updating the Job record.
 
@@ -102,9 +103,7 @@ async def generate_screening_answers(
             response_text = message.content[0].text.strip()
         except Exception as exc:
             log.error("anthropic_api_failure", error=str(exc), job_id=payload.job_id)
-            return JSONResponse(
-                status_code=503, content={"detail": "anthropic_api_unavailable"}
-            )
+            return JSONResponse(status_code=503, content={"detail": "anthropic_api_unavailable"})
 
         # Parse JSON response
         try:
@@ -119,10 +118,13 @@ async def generate_screening_answers(
                 parsed = json.loads(match.group(1))
                 answers_list = parsed.get("answers", [])
             else:
-                log.warning("screening_answers_parse_error", job_id=payload.job_id, response=response_text[:200])
+                log.warning(
+                    "screening_answers_parse_error",
+                    job_id=payload.job_id,
+                    response=response_text[:200],
+                )
                 answers_list = [
-                    {"question": q, "answer": response_text}
-                    for q in payload.screening_questions
+                    {"question": q, "answer": response_text} for q in payload.screening_questions
                 ]
 
         # Store answers on the Job record

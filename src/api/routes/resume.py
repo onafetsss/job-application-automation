@@ -1,10 +1,9 @@
-"""Resume routes — POST /select-resume uses Claude Haiku for LLM-based resume matching (D-17, D-18)."""
+"""Resume routes — POST /select-resume uses Claude Haiku for LLM-based resume matching."""
 
+import anthropic
 import structlog
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
-
-import anthropic
 
 from src.api.schemas import SelectResumeIn, SelectResumeOut
 from src.preparation.resume_reader import list_resumes
@@ -47,20 +46,20 @@ async def select_resume(
     for r in resumes:
         # Use first 500 chars as a condensed preview
         preview = r["text"][:500].replace("\n", " ").strip()
-        resume_summaries.append(f'- Filename: {r["name"]}\n  Preview: {preview}')
+        resume_summaries.append(f"- Filename: {r['name']}\n  Preview: {preview}")
 
     resume_list_text = "\n".join(resume_summaries)
 
     prompt = (
-        f"You are a resume selection assistant. Given a job posting and a list of candidate resumes, "
-        f"select the single best-fit resume.\n\n"
+        "You are a resume selection assistant. Given a job posting and a list of candidate "
+        "resumes, select the single best-fit resume.\n\n"
         f"Job Title: {payload.job_title}\n"
         f"Company: {payload.company}\n"
         f"Job Description:\n{payload.job_description[:2000]}\n\n"
         f"Available Resumes:\n{resume_list_text}\n\n"
-        f"Instructions: Respond with ONLY the exact filename of the best-fit resume on the first line, "
-        f"followed by a brief one-sentence explanation on the second line. "
-        f"Do not include any other text before the filename."
+        "Instructions: Respond with ONLY the exact filename of the best-fit resume on the "
+        "first line, followed by a brief one-sentence explanation on the second line. "
+        "Do not include any other text before the filename."
     )
 
     try:
