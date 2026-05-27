@@ -133,3 +133,41 @@ def test_first_failing_rule_short_circuits() -> None:
     # title fails first (no include match), so reason is title_mismatch
     assert result.passed is False
     assert result.reason == "title_mismatch"
+
+
+def test_reject_blocked_phrase_in_jd_when_location_is_none() -> None:
+    """CR-02 regression: blocked_phrases scan must run even when location is None.
+
+    A lead scraped without a location field but with US work-auth language in the JD
+    must be rejected as location_mismatch — not silently passed through.
+    """
+    config = _make_config(
+        include=["Product Manager"],
+        blocked_phrases=["authorized to work in the US"],
+    )
+    result = check_eligibility(
+        title="Senior Product Manager",
+        location=None,
+        jd_text="Candidates must be authorized to work in the US",
+        config=config,
+    )
+    assert result == FilterResult(passed=False, reason="location_mismatch")
+
+
+def test_pass_when_location_is_none_and_no_blocked_phrase() -> None:
+    """Defensive: fix must not over-correct and reject ALL location=None leads.
+
+    A lead with location=None and a clean JD (no blocked phrase) must still pass.
+    """
+    config = _make_config(
+        include=["Product Manager"],
+        allow_remote=True,
+        blocked_phrases=["authorized to work in the US"],
+    )
+    result = check_eligibility(
+        title="Senior Product Manager",
+        location=None,
+        jd_text="Great PM role — fully remote, competitive pay",
+        config=config,
+    )
+    assert result.passed is True
