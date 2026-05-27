@@ -1,7 +1,11 @@
 """Integration tests for the dry-run pipeline: write_audit, dedup, and eligibility flow."""
 from __future__ import annotations
 
+import os
+import sqlite3
+import subprocess
 import uuid
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -246,3 +250,62 @@ async def test_audit_log_has_required_fields(db_session_factory):
                 AuditEvent.DRY_RUN_WOULD_QUEUE.value,
             ):
                 assert row.reason is None  # no reason for passing leads
+
+
+# ---------------------------------------------------------------------------
+# Subprocess-based regression test (01-04 gap closure)
+# ---------------------------------------------------------------------------
+
+# Worktree root — used as cwd for all subprocess calls
+_PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+
+def test_dry_run_catches_within_batch_duplicate(tmp_path):
+    """Regression: within-batch duplicate URL is caught in dry-run on a fresh DB.
+
+    VERIFICATION truth 14 (PARTIAL): --dry-run prints DEDUP_SKIP for duplicate URL
+    in same batch.
+    VERIFICATION truth 16 (PARTIAL): duplicate lead appears once (SC-2) in dry-run
+    mode.
+
+    Expected on the 6-lead SAMPLE_LEADS fixture:
+      - Exactly 2 QUEUED lines (leads 1 and 2 pass eligibility)
+      - Exactly 1 DEDUP_SKIP line (lead 6 = duplicate of lead 1)
+      - audit_log table has exactly 1 row with event='dedup_skip'
+    """
+    db_path = str(tmp_path / "test_dedup_dry.db")
+    test_env = os.environ.copy()
+    test_env["DB_PATH"] = db_path
+
+    result = subprocess.run(
+        ["uv", "run", "python", "main.py", "--dry-run"],
+        capture_output=True,
+        text=True,
+        cwd=str(_PROJECT_ROOT),
+        env=test_env,
+    )
+
+    assert result.returncode == 0, f"stderr: {result.stderr}"
+
+    # Must have exactly 2 QUEUED lines — not 3 (the duplicate must NOT appear as QUEUED)
+    queued_count = sum(1 for line in result.stdout.splitlines() if line.startswith("QUEUED"))
+    assert queued_count == 2, (
+        f"Expected 2 QUEUED lines, got {queued_count}. stdout:\n{result.stdout}"
+    )
+
+    # Must have at least 1 DEDUP_SKIP line indicating the within-batch duplicate was caught
+    assert "DEDUP_SKIP" in result.stdout, (
+        f"Expected DEDUP_SKIP in stdout. stdout:\n{result.stdout}"
+    )
+
+    # DB audit_log must have exactly 1 DEDUP_SKIP row (OPS-03 audit trail)
+    conn = sqlite3.connect(db_path)
+    try:
+        cursor = conn.execute("SELECT COUNT(*) FROM audit_log WHERE event = 'DEDUP_SKIP'")
+        dedup_skip_count = cursor.fetchone()[0]
+    finally:
+        conn.close()
+
+    assert dedup_skip_count == 1, (
+        f"Expected 1 dedup_skip audit row, got {dedup_skip_count}"
+    )
