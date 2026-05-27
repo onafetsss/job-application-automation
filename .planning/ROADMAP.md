@@ -37,8 +37,8 @@ Plans:
 - [ ] 01-PLAN-03-dry-run-cli.md — Complete write_audit(), upgrade main.py to full dry-run pipeline, end-to-end CLI test
 
 **Gap Closure** *(after verification — both plans wave 1, independent, parallel-safe)*
-- [ ] 01-04-PLAN.md — Add in-memory seen_hashes set to main.run() so dry-run catches within-batch URL duplicates (closes VERIFICATION truths 14 + 16)
-- [ ] 01-05-PLAN.md — Move blocked_phrases JD scan outside the location-is-not-None guard in eligibility.py (closes VERIFICATION truth 9 / REVIEW CR-02)
+- [x] 01-04-PLAN.md — Add in-memory seen_hashes set to main.run() so dry-run catches within-batch URL duplicates (closes VERIFICATION truths 14 + 16)
+- [x] 01-05-PLAN.md — Move blocked_phrases JD scan outside the location-is-not-None guard in eligibility.py (closes VERIFICATION truth 9 / REVIEW CR-02)
 
 Cross-cutting constraints:
 - `--dry-run` CLI flag (D-01) affects all three plans — must be wired through main.py in Wave 3
@@ -90,7 +90,7 @@ Cross-cutting constraints:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 3/3 | Complete   | 2026-05-27 |
+| 1. Foundation | 5/5 | Complete   | 2026-05-27 |
 | 2. Ingest, Generate, and Email Apply | 0/TBD | Not started | - |
 | 3. LinkedIn Easy Apply | 0/TBD | Not started | - |
 | 4. Dashboard CRM and Additional Sources | 0/TBD | Not started | - |
