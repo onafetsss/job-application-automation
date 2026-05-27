@@ -1,0 +1,42 @@
+# Eligibility configuration for autonomous job application agent
+# Edit freely — changes take effect on next run (no code changes needed)
+
+roles:
+  include:
+    # Job title must contain at least one of these strings (case-insensitive)
+    - "Product Manager"
+    - "Senior Product Manager"
+    - "Principal Product Manager"
+    - "Head of Product"
+  exclude:
+    # Reject if title contains any of these (applied after include check)
+    - "Internship"
+    - "Graduate Program"
+    - "Entry Level"
+    - "Junior"
+    - "0-2 years"
+
+location:
+  allow_remote: true
+  allowed_locations:
+    # Accept jobs in any of these locations (case-insensitive substring match)
+    - "Philippines"
+    - "Manila"
+    - "Remote"
+    - "Worldwide"
+  blocked_phrases:
+    # Reject if JD contains any of these phrases (catches "US only", "must be authorized")
+    - "must be authorized to work in the US"
+    - "US citizens only"
+    - "requires US work authorization"
+    - "must be located in"
+
+salary:
+  skip_if_no_data: false   # true = skip all jobs without salary info
+  min_annual_usd: 0        # set to non-zero to filter by salary floor
+
+keywords:
+  blocklist:
+    # Reject regardless of title match if any of these appear in the JD
+    - "Clearance required"
+    - "Security clearance"

@@ -1,0 +1,10 @@
+data/
+.env
+__pycache__/
+*.db
+.mypy_cache/
+.ruff_cache/
+browser_profiles/
+*.pyc
+dist/
+.venv/
