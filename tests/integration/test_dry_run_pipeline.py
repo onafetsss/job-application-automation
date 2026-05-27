@@ -298,10 +298,10 @@ def test_dry_run_catches_within_batch_duplicate(tmp_path):
         f"Expected DEDUP_SKIP in stdout. stdout:\n{result.stdout}"
     )
 
-    # DB audit_log must have exactly 1 dedup_skip row (OPS-03 audit trail)
+    # DB audit_log must have exactly 1 DEDUP_SKIP row (OPS-03 audit trail)
     conn = sqlite3.connect(db_path)
     try:
-        cursor = conn.execute("SELECT COUNT(*) FROM audit_log WHERE event = 'dedup_skip'")
+        cursor = conn.execute("SELECT COUNT(*) FROM audit_log WHERE event = 'DEDUP_SKIP'")
         dedup_skip_count = cursor.fetchone()[0]
     finally:
         conn.close()
