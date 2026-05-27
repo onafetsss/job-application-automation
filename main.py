@@ -6,6 +6,7 @@ Usage:
 Phase 1: processes hardcoded sample leads through dedup + eligibility + audit.
 Phase 2+: replace sample_leads with real ingestion sources.
 """
+
 import argparse
 import asyncio
 import os
@@ -163,9 +164,37 @@ async def run(args: argparse.Namespace) -> None:
     if args.limit > 0:
         leads = leads[: args.limit]
 
+    # in-memory accumulator: catches within-batch duplicate URLs before the DB lookup.
+    # In dry-run mode no Job rows are written, so is_duplicate() cannot detect same-batch
+    # duplicates; this set covers that gap.  In live mode it serves as a fast-path first
+    # check — the DB dedup remains the authoritative cross-run mechanism.
+    seen_hashes: set[str] = set()
+
     # Process each lead atomically: dedup + eligibility + audit in one transaction
     for lead in leads:
         url_hash = hash_url(lead["url"])
+
+        # --- In-memory within-batch dedup check (covers dry-run gap) ---
+        if url_hash in seen_hashes:
+            async with session_factory() as session:
+                async with session.begin():
+                    await write_audit(
+                        session,
+                        source=lead.get("source", "unknown"),
+                        event=AuditEvent.DEDUP_SKIP,
+                        job_id=None,
+                        reason=None,
+                    )
+            if args.dry_run:
+                print(f"{'DEDUP_SKIP':<30} {lead['title']} @ {lead['company']}")
+            log.info(
+                "dedup_skip",
+                title=lead["title"],
+                company=lead["company"],
+                reason="within_batch",
+            )
+            continue
+        seen_hashes.add(url_hash)
 
         async with session_factory() as session:
             async with session.begin():
@@ -235,9 +264,7 @@ async def run(args: argparse.Namespace) -> None:
                     )
                     session.add(job)
 
-                    audit_event = (
-                        AuditEvent.QUEUED if result.passed else AuditEvent.FILTERED_REJECT
-                    )
+                    audit_event = AuditEvent.QUEUED if result.passed else AuditEvent.FILTERED_REJECT
                     await write_audit(
                         session,
                         source=lead.get("source", "unknown"),
