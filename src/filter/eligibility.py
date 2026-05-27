@@ -1,4 +1,5 @@
 """Pure eligibility filter function — no I/O, no database access."""
+
 from dataclasses import dataclass
 
 from src.filter.config_loader import EligibilityConfig
@@ -27,8 +28,10 @@ def check_eligibility(
       1. Title include check — must match at least one allowed pattern
       2. Title exclude check — reject if any excluded keyword is present
       3. JD keyword blocklist — reject if any blocked phrase in job description
-      4. Location blocked phrases in JD — reject if location-restricting language found
-      5. Location allowed list — reject if not remote-eligible and location not in allowed list
+      4a. Location blocked phrases in JD — reject if location-restricting language found
+          (runs unconditionally — applies even when location is None)
+      4b. Location allowlist — reject if not remote-eligible and location not in allowed list
+          (only runs when location is not None — allowlist matching requires a location string)
 
     Returns:
         FilterResult(passed=True) if all rules pass.
@@ -52,18 +55,18 @@ def check_eligibility(
         if _normalize(phrase) in jd_lower:
             return FilterResult(passed=False, reason="keyword_blocklist")
 
-    # 4. Location check (only if location is provided)
+    # 4a. Location blocked phrases in JD — unconditional scan regardless of location field
+    # Protects against US work-auth requirements even when the scraper omits the location field.
+    for phrase in config.location.blocked_phrases:
+        if _normalize(phrase) in jd_lower:
+            return FilterResult(passed=False, reason="location_mismatch")
+
+    # 4b. Location allowlist check — only meaningful when a location string is available
     if location is not None:
         location_lower = _normalize(location)
-        # 4a. Blocked phrases in JD (e.g. "US work authorization required")
-        for phrase in config.location.blocked_phrases:
-            if _normalize(phrase) in jd_lower:
-                return FilterResult(passed=False, reason="location_mismatch")
-        # 4b. Must match at least one allowed location (or allow_remote covers it)
         if not config.location.allow_remote or "remote" not in location_lower:
             if not any(
-                _normalize(loc) in location_lower
-                for loc in config.location.allowed_locations
+                _normalize(loc) in location_lower for loc in config.location.allowed_locations
             ):
                 return FilterResult(passed=False, reason="location_mismatch")
 
