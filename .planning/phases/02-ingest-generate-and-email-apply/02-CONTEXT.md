@@ -1,0 +1,137 @@
+# Phase 2: Ingest, Generate, and Email Apply - Context
+
+**Gathered:** 2026-05-28
+**Status:** Ready for planning
+
+<domain>
+## Phase Boundary
+
+Wire five new capabilities into the existing Phase 1 pipeline: Gmail ingestion + JobSpy/Kalibrr scraping → filter/dedup (Phase 1) → AI resume selection + cover letter generation + screening answers → email submission → Telegram notifications. Deliver the first real end-to-end autonomous run at zero LinkedIn account risk.
+
+**Architecture:** Self-hosted n8n on the same VPS as a Python FastAPI service. n8n owns orchestration, scheduling, Gmail polling, Claude API calls, email sending, and Telegram. Python FastAPI exposes Phase 1 logic as HTTP endpoints and handles what n8n can't (JobSpy/Kalibrr scraping, SQLite DB, Phase 3 Camoufox).
+
+**Requirements in scope:** INGEST-01, INGEST-02, INGEST-03, AI-01, AI-02, AI-03, APPLY-02, NOTIF-01, NOTIF-02, OPS-01, OPS-02
+
+</domain>
+
+<decisions>
+## Implementation Decisions
+
+### Orchestration & Run Model
+- **D-01:** Self-hosted n8n on the same VPS as the Python service. n8n handles scheduling/triggers, Gmail polling, Claude API calls (HTTP Request node), email sending (SMTP node), and Telegram notifications. No APScheduler needed.
+- **D-02:** Python FastAPI service exposes Phase 1 logic as HTTP endpoints. n8n calls these endpoints as part of the workflow. Python also owns all capabilities n8n can't run natively: JobSpy scraping, Kalibrr scraping, SQLite DB reads/writes, Phase 3 Camoufox browser automation.
+- **D-03:** JobSpy scraping (INGEST-03) is a Python FastAPI endpoint (`POST /scrape-jobspy`) triggered by an n8n cron schedule. Same pattern for Kalibrr scraping (`POST /scrape-kalibrr`).
+
+### Gmail Ingestion (INGEST-01)
+- **D-04:** Gmail is polled via the Gmail API — not Pub/Sub push. Polling interval: every 1 hour. No GCP project, no Pub/Sub topic, no public webhook endpoint required.
+- **D-05:** Job alert emails are identified by sender filter: `jobalerts-noreply@linkedin.com`. No Gmail label or subject-line matching.
+- **D-06:** Processed messages are tracked via the Gmail API's `historyId`. After each poll, store the latest `historyId` in the DB. Next poll fetches only messages since that ID — zero API calls when no new mail.
+- **D-07:** Gmail OAuth uses an offline refresh token stored in `.env` (never committed). Run the OAuth flow once locally to obtain the refresh token; the agent silently refreshes access tokens at runtime.
+- **D-08:** LinkedIn job alert emails are digest-style (one email, multiple job listings). The parser must handle 1-to-many jobs per email — treat every email as potentially containing multiple listings.
+
+### Email Parsing (INGEST-01)
+- **D-09:** AI-assisted extraction — n8n strips the email to plain text, then calls Claude Haiku 3.5 via HTTP Request node with a structured output prompt. Claude returns a JSON array of job listings.
+- **D-10:** Extracted fields per job: `title`, `company`, `location`, `url`. No JD text from the email — JD is stored from subsequent enrichment or left blank.
+- **D-11:** LinkedIn tracking URLs (e.g. `linkedin.com/comm/jobs/view/...`) are stored as-is. The Phase 1 dedup already strips tracking params (`utm_source`, `trk`, `refid`) during canonicalization. No extra HTTP redirect-follow at parse time.
+
+### AI Model Selection
+- **D-12:** Claude Haiku 3.5 for all extraction and selection tasks: email parsing, resume selection, screening question answers. Cheap (~$0.001/call), fast, accurate for structured JSON tasks.
+- **D-13:** Claude Sonnet 4.x for cover letter generation only. Quality matters — this is what recruiters read. ~$0.015/application. Estimated total cost: ~$20/1,000 applications.
+- **D-14:** Both models are called by n8n via HTTP Request nodes using the Anthropic API. Claude API key stored in n8n credentials.
+
+### Resume Library & AI Selection (AI-01)
+- **D-15:** Resume files are a mix of `.docx` and `.pdf`. Resumes are differentiated by role type / industry focus (e.g. PM-product, PM-growth, PM-technical).
+- **D-16:** Resume files are committed to the private git repo and deployed with the code. They live at a consistent path (e.g. `resumes/`).
+- **D-17:** Resume selection uses LLM prompt comparison via Haiku: send the job description + a summary of each resume's focus area, ask which best fits. Works well for a small library (< 10 resumes), no embeddings infrastructure needed.
+- **D-18:** A Python FastAPI endpoint (`POST /select-resume`) handles selection and returns both the chosen resume name and its text content. n8n calls this endpoint, then uses the returned resume text in the downstream Claude Sonnet cover letter prompt.
+
+### AI Generation (AI-02, AI-03)
+- **D-19:** n8n builds the cover letter prompt from: job description (from parsing step) + resume text (from `/select-resume`) + Stefano's profile. n8n calls Claude Sonnet API and receives the cover letter text.
+- **D-20:** Screening question answers (AI-03) are generated by Haiku when a job posting contains screening questions. Questions must be extracted during ingestion and stored on the Job record before this step runs.
+
+### Email Submission (APPLY-02)
+- **D-21:** n8n sends the application email via SMTP node (or Gmail Send node) from Stefano's Gmail account. Resume PDF/docx is attached; cover letter is in the email body or as a second attachment — planner decides format.
+- **D-22:** Only jobs with an email apply path (`apply_type = 'email'`) reach this step. The `apply_type` field already exists on the Job model from Phase 1. Setting it correctly during ingestion is a planner decision.
+
+### Notifications (NOTIF-01, NOTIF-02)
+- **D-23:** n8n Telegram node handles all notifications — no python-telegram-bot library needed. Telegram bot token stored in n8n credentials.
+- **D-24:** After each successful submission: n8n fires a Telegram message with company, role, resume used, and job URL (per ROADMAP.md success criteria).
+- **D-25:** Critical failure alerts (NOTIF-02) also go through n8n's error handling / Telegram node — triggered by workflow errors, not a separate Python process.
+
+### Claude's Discretion
+- FastAPI endpoint schema (request/response shapes for `/ingest-lead`, `/select-resume`, `/scrape-jobspy`, `/scrape-kalibrr`, `/write-application`)
+- Stefano's profile format and storage (YAML config? text file? how it's injected into the cover letter prompt)
+- `apply_type` detection logic — how email-apply addresses are found in job postings during ingestion
+- OPS-01 implementation (auth challenge detection and pause signal) — where this lives in the n8n workflow vs Python
+- OPS-02 implementation (heartbeat signal) — cron-triggered Telegram ping or n8n schedule health check
+- n8n workflow structure (one workflow for Gmail + one for JobSpy? or one master workflow?)
+- Gmail `historyId` storage location (new DB table? config table already in Phase 1?)
+- Kalibrr scraper implementation details (CSS selectors, pagination, rate limiting)
+
+</decisions>
+
+<canonical_refs>
+## Canonical References
+
+**Downstream agents MUST read these before planning or implementing.**
+
+### Project Context
+- `.planning/PROJECT.md` — Core value, constraints, key decisions
+- `.planning/REQUIREMENTS.md` — Phase 2 requirements: INGEST-01–03, AI-01–03, APPLY-02, NOTIF-01–02, OPS-01–02
+- `.planning/ROADMAP.md` Phase 2 section — Success criteria (7 observable behaviors that define done)
+
+### Phase 1 Decisions (carry forward)
+- `.planning/phases/01-foundation/01-CONTEXT.md` — D-04 (full JD text stored), D-05 (state machine), D-06 (Job model already has resume_template/cover_letter/screening_answers columns), D-07 (config path via env var), D-08 (dedup threshold 85%)
+
+### Stack & Architecture
+- `CLAUDE.md` — Full technology stack, library choices, what NOT to use (critical for n8n + Python split)
+- `.planning/research/STACK.md` — Stack rationale and version constraints
+- `.planning/research/ARCHITECTURE.md` — SQLite-as-queue pattern, job lifecycle, build order constraints
+- `.planning/research/PITFALLS.md` — Known failure modes relevant to ingestion and AI generation
+
+</canonical_refs>
+
+<code_context>
+## Existing Code Insights
+
+### Reusable Assets
+- `src/queue/models.py` — `Job` model already has `apply_type`, `resume_template`, `cover_letter`, `screening_answers` (all nullable). Phase 2 sets these; no schema migration needed.
+- `src/filter/eligibility.py` — Pure function `check_eligibility()`. Expose as a FastAPI endpoint with no internal changes.
+- `src/filter/dedup.py` — `is_duplicate()` async function needs `AsyncSession`. FastAPI endpoint must provide a DB session from `get_session_factory()`.
+- `src/queue/db.py` — `get_session_factory()` and `init_db()`. FastAPI startup event calls `init_db()` once; endpoints use the session factory.
+- `src/audit_log.py` — `write_audit()` and `AuditEvent` enum. All new pipeline steps must write audit entries (Phase 2 needs new AuditEvent values: APPLYING, SUBMITTED, FAILED, NOTIFIED).
+
+### Established Patterns
+- Session handling: `async with session_factory() as session: async with session.begin():` — all DB writes follow this pattern.
+- Env config: paths via `os.environ.get("KEY", "default")` with `.env` + `load_dotenv()` at startup.
+- Structured logging: `structlog` with JSON output to stderr; stdout reserved for human-readable output only.
+
+### Integration Points
+- `main.py` currently owns the CLI pipeline. Phase 2 adds a FastAPI app alongside it — either as a separate entrypoint (`api.py`) or by converting `main.py` to also expose HTTP endpoints. Planner decides.
+- `pyproject.toml` needs Phase 2 dependencies: `fastapi`, `uvicorn`, `python-jobspy`, `google-api-python-client`, `google-auth-oauthlib`, `python-docx`, `PyMuPDF`, `httpx`, `beautifulsoup4`.
+- `--source` CLI flag already wired in `main.py` but currently unused. Phase 2 may retire it in favor of n8n-triggered HTTP calls.
+
+</code_context>
+
+<specifics>
+## Specific Ideas
+
+- n8n is self-hosted on the same VPS as the Python FastAPI service — shared Docker Compose setup makes sense
+- Resume files live in `resumes/` directory in the private git repo, deployed with the code
+- Gmail OAuth refresh token goes in `.env` (never committed); same pattern as other secrets
+- All Claude API calls originate from n8n HTTP Request nodes — the Anthropic API key lives in n8n credentials, not Python `.env`
+- Cost target: ~$20/1,000 applications (Haiku for extraction/selection, Sonnet for cover letters only)
+
+</specifics>
+
+<deferred>
+## Deferred Ideas
+
+None — discussion stayed within phase scope.
+
+</deferred>
+
+---
+
+*Phase: 2-Ingest-Generate-and-Email-Apply*
+*Context gathered: 2026-05-28*
