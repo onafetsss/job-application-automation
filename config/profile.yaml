@@ -1,0 +1,32 @@
+# Profile configuration for AI cover letter and resume selection prompts
+# Edit freely — changes take effect on next run (no code changes needed)
+
+summary: >
+  Senior Product Manager with 7+ years driving 0-to-1 products at B2B SaaS and marketplace companies.
+  Track record of shipping data-driven features that grow DAU and revenue.
+  Experienced leading cross-functional teams across APAC and globally distributed environments.
+
+target_roles:
+  - "Product Manager"
+  - "Senior Product Manager"
+  - "Head of Product"
+  - "Principal Product Manager"
+
+key_projects:
+  - name: "Growth Flywheel — Marketplace Platform"
+    impact: "Increased GMV 34% in 6 months by redesigning seller onboarding and activation flow"
+  - name: "ML Recommendations Engine"
+    impact: "Reduced churn 18% by personalizing home feed for 2M active users"
+  - name: "Mobile App Relaunch"
+    impact: "Lifted 30-day retention by 22% through streamlined onboarding and push notification strategy"
+
+skills:
+  - "Product strategy and roadmap ownership"
+  - "Data analysis (SQL, Amplitude, Mixpanel)"
+  - "Stakeholder alignment and executive communication"
+  - "Agile / Scrum / Sprint planning"
+  - "A/B testing and experimentation"
+  - "Cross-functional team leadership"
+
+location_preference: "Remote — Philippines / Southeast Asia based"
+availability: "Immediate"

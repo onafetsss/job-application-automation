@@ -44,6 +44,8 @@ class Job(Base):
     resume_template = Column(String)
     cover_letter = Column(Text)
     screening_answers = Column(Text)                            # JSON blob
+    # screening_questions: raw text extracted during enrichment; nullable in Phase 2
+    screening_questions = Column(Text)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -72,3 +74,12 @@ class EligibilityConfigSnapshot(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     config_json = Column(Text, nullable=False)
     applied_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class AgentConfig(Base):
+    """Key-value store for agent runtime state (e.g., gmail_history_id)."""
+    __tablename__ = "agent_config"
+
+    key = Column(String, primary_key=True)
+    value = Column(Text, nullable=False)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
