@@ -1,25 +1,20 @@
 """CLI integration tests for main.py — subprocess-based, testing terminal output and DB state."""
 from __future__ import annotations
 
+import os
 import subprocess
-import sys
 from pathlib import Path
-
-import pytest
 
 # Worktree root — used as cwd for all subprocess calls
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 
-def run_main(*args: str, env: dict | None = None) -> subprocess.CompletedProcess:
+def run_main(*args: str, db_path: str | None = None) -> subprocess.CompletedProcess:
     """Run main.py via uv run python main.py <args> and capture output."""
-    import os
-
     test_env = os.environ.copy()
-    # Use a test-specific DB to avoid corrupting data/jobs.db
-    test_env["DB_PATH"] = "data/test_cli.db"
-    if env:
-        test_env.update(env)
+    # Use a caller-provided DB path (temp file) so each test is isolated
+    if db_path:
+        test_env["DB_PATH"] = db_path
 
     return subprocess.run(
         ["uv", "run", "python", "main.py", *args],
@@ -42,23 +37,26 @@ def test_help_shows_dry_run_flag():
     assert "--dry-run" in result.stdout
 
 
-def test_dry_run_prints_queued_line():
+def test_dry_run_prints_queued_line(tmp_path):
     """--dry-run stdout must contain at least one QUEUED line with a job title."""
-    result = run_main("--dry-run")
+    db = str(tmp_path / "test_cli_queued.db")
+    result = run_main("--dry-run", db_path=db)
     assert result.returncode == 0, f"stderr: {result.stderr}"
     assert "QUEUED" in result.stdout, f"stdout: {result.stdout}"
 
 
-def test_dry_run_prints_rejected_line():
+def test_dry_run_prints_rejected_line(tmp_path):
     """--dry-run stdout must contain at least one REJECTED: line."""
-    result = run_main("--dry-run")
+    db = str(tmp_path / "test_cli_rejected.db")
+    result = run_main("--dry-run", db_path=db)
     assert result.returncode == 0, f"stderr: {result.stderr}"
     assert "REJECTED:" in result.stdout, f"stdout: {result.stdout}"
 
 
-def test_no_dry_run_no_terminal_output():
+def test_no_dry_run_no_terminal_output(tmp_path):
     """Running without --dry-run must NOT print QUEUED or REJECTED: to stdout."""
-    result = run_main()
+    db = str(tmp_path / "test_cli_live.db")
+    result = run_main(db_path=db)
     assert result.returncode == 0, f"stderr: {result.stderr}"
     assert "QUEUED" not in result.stdout, f"stdout contained QUEUED: {result.stdout}"
     assert "REJECTED:" not in result.stdout, f"stdout contained REJECTED:: {result.stdout}"

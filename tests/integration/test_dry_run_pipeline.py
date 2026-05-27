@@ -1,7 +1,6 @@
 """Integration tests for the dry-run pipeline: write_audit, dedup, and eligibility flow."""
 from __future__ import annotations
 
-import asyncio
 import uuid
 
 import pytest
@@ -9,12 +8,11 @@ import pytest_asyncio
 from sqlalchemy import select
 
 from src.audit_log import AuditEvent, AuditLogEntry, write_audit
-from src.filter.config_loader import EligibilityConfig, RolesConfig, LocationConfig
+from src.filter.config_loader import EligibilityConfig, LocationConfig, RolesConfig
 from src.filter.dedup import hash_url, is_duplicate
 from src.filter.eligibility import check_eligibility
 from src.queue.db import get_session_factory, init_db
 from src.queue.models import Job, JobStatus
-
 
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
@@ -146,7 +144,6 @@ async def test_dry_run_rejects_ineligible_lead(db_session_factory):
 @pytest.mark.asyncio
 async def test_dedup_skip_logged(db_session_factory):
     """Duplicate path: DEDUP_SKIP audit row; jobs table count unchanged."""
-    config = make_config(roles_include=["Product Manager"])
     lead = make_lead(url="https://example.com/job99")
     url_hash = hash_url(lead["url"])
 

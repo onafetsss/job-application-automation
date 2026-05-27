@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 import structlog
 from sqlalchemy import Column, DateTime, Integer, String, Text
@@ -10,7 +10,7 @@ from src.queue.models import Base
 log = structlog.get_logger()
 
 
-class AuditEvent(str, Enum):
+class AuditEvent(StrEnum):
     DISCOVERED = "DISCOVERED"
     FILTERED_PASS = "FILTERED_PASS"
     FILTERED_REJECT = "FILTERED_REJECT"
