@@ -61,7 +61,7 @@ Cross-cutting constraints:
 Plans:
 
 **Wave 1**
-- [ ] 02-01-PLAN.md — FastAPI scaffold, Pydantic schemas, /ingest-lead endpoint, AgentConfig model, AuditEvent additions, Docker Compose, Dockerfile.api
+- [x] 02-01-PLAN.md — FastAPI scaffold, Pydantic schemas, /ingest-lead endpoint, AgentConfig model, AuditEvent additions, Docker Compose, Dockerfile.api
 
 **Wave 2** *(blocked on Wave 1 completion — all three plans run in parallel)*
 - [ ] 02-02-PLAN.md — Gmail API client with OAuth2, historyId polling, /poll-gmail and /fetch-email-body endpoints
@@ -109,6 +109,6 @@ Cross-cutting constraints:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 5/5 | Complete   | 2026-05-27 |
-| 2. Ingest, Generate, and Email Apply | 0/5 | Planning complete | - |
+| 2. Ingest, Generate, and Email Apply | 1/5 | In Progress|  |
 | 3. LinkedIn Easy Apply | 0/TBD | Not started | - |
 | 4. Dashboard CRM and Additional Sources | 0/TBD | Not started | - |
