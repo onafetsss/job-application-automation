@@ -24,7 +24,7 @@ Four phases deliver the complete autonomous job application system. Phase 1 buil
   3. Dry-run mode processes jobs through the full filter pipeline and writes rejection/approval decisions to the log without submitting anything
   4. The eligibility config (eligibility.yaml) can be edited to change title keywords, location, or exclusions and the system reflects the new rules immediately on next run without code changes
   5. Every processed job has a full audit log entry: job ID, source, timestamp, filter decision, and reason
-**Plans**: 3 plans
+**Plans**: 5 plans (2 gap closure)
 Plans:
 
 **Wave 1**
@@ -35,6 +35,10 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 01-PLAN-03-dry-run-cli.md — Complete write_audit(), upgrade main.py to full dry-run pipeline, end-to-end CLI test
+
+**Gap Closure** *(after verification — both plans wave 1, independent, parallel-safe)*
+- [ ] 01-04-PLAN.md — Add in-memory seen_hashes set to main.run() so dry-run catches within-batch URL duplicates (closes VERIFICATION truths 14 + 16)
+- [ ] 01-05-PLAN.md — Move blocked_phrases JD scan outside the location-is-not-None guard in eligibility.py (closes VERIFICATION truth 9 / REVIEW CR-02)
 
 Cross-cutting constraints:
 - `--dry-run` CLI flag (D-01) affects all three plans — must be wired through main.py in Wave 3
