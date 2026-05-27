@@ -1,30 +1,50 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-27T00:00:00.000Z",
-  "phase": "1",
-  "phase_name": "Foundation",
-  "phase_dir": ".planning/phases/01-foundation",
-  "plan": 0,
+  "timestamp": "2026-05-27T18:10:58.692Z",
+  "phase": "02",
+  "phase_name": "ingest-generate-and-email-apply",
+  "phase_dir": ".planning/phases/02-ingest-generate-and-email-apply",
+  "plan": 5,
   "task": 0,
-  "total_tasks": 6,
+  "total_tasks": 3,
   "status": "paused",
-  "completed_tasks": [],
+  "completed_tasks": [
+    {"id": "02-01", "name": "FastAPI service foundation", "status": "done", "commit": "2ccd069"},
+    {"id": "02-02-tasks", "name": "Gmail ingestion code (Tasks 1+2)", "status": "done", "commit": "0e3ee83"},
+    {"id": "02-03-tasks", "name": "Scraper vertical slice code (Tasks 1+2)", "status": "done", "commit": "a57b6d4"},
+    {"id": "02-04", "name": "AI prep + application lifecycle", "status": "done", "commit": "2db87c8"}
+  ],
   "remaining_tasks": [
-    {"id": 1, "name": "01-PLAN-01 Task 1 — Project scaffold + pyproject.toml", "status": "not_started"},
-    {"id": 2, "name": "01-PLAN-01 Task 2 — DB engine + ORM models (Job/Application/AuditLogEntry)", "status": "not_started"},
-    {"id": 3, "name": "01-PLAN-02 Task 1 — Config loader (YAML→Pydantic) + eligibility filter", "status": "not_started"},
-    {"id": 4, "name": "01-PLAN-02 Task 2 — Cross-source deduplication (rapidfuzz, DEDUP_THRESHOLD=85)", "status": "not_started"},
-    {"id": 5, "name": "01-PLAN-03 Task 1 — Complete write_audit() + integration test", "status": "not_started"},
-    {"id": 6, "name": "01-PLAN-03 Task 2 — Full dry-run CLI pipeline (main.py) + end-to-end test", "status": "not_started"}
+    {"id": "02-02-checkpoint", "name": "Gmail OAuth human verification", "status": "awaiting_human"},
+    {"id": "02-03-checkpoint", "name": "Kalibrr CSS selector verification", "status": "awaiting_human"},
+    {"id": "02-05", "name": "n8n workflow JSONs + README (Wave 3)", "status": "not_started"}
   ],
   "blockers": [],
-  "human_actions_pending": [],
+  "human_actions_pending": [
+    {
+      "action": "Gmail OAuth setup: create GCP project, enable Gmail API, create OAuth 2.0 Client ID (Desktop), download credentials JSON, run scripts/gmail_oauth.py, verify /gmail/poll-gmail returns history_id",
+      "context": "Plan 02-02 code is complete and merged. /poll-gmail and /fetch-email-body endpoints exist. OAuth token must be acquired before live testing.",
+      "blocking": true,
+      "plan": "02-02"
+    },
+    {
+      "action": "Kalibrr selector verification: start server, curl POST /scrape/scrape-kalibrr with search_term=Product Manager, verify count>0. If count==0, inspect live HTML at kalibrr.com/job-board/te/Product%20Manager/1 and report CSS selector structure.",
+      "context": "Plan 02-03 code is complete and merged. Kalibrr scraper uses 3-strategy CSS selector fallback but selectors are unverified against live HTML (RESEARCH.md Open Question 1).",
+      "blocking": true,
+      "plan": "02-03"
+    },
+    {
+      "action": "After both checkpoints approved, execute Wave 3: /gsd-execute-phase (picks up from 02-05)",
+      "context": "Plan 02-05 creates 6 n8n workflow JSON files + README. Requires all Wave 2 plans complete. Has its own blocking checkpoint (full Docker Compose + n8n import verification).",
+      "blocking": false,
+      "plan": "02-05"
+    }
+  ],
   "decisions": [
-    {"decision": "Skipped phase-specific research", "rationale": "Existing project-level research (STACK.md, ARCHITECTURE.md, PITFALLS.md) already covers Phase 1 fully and is referenced in CONTEXT.md", "phase": "1"},
-    {"decision": "Walking Skeleton active (01-SKELETON.md created)", "rationale": "Phase 1 is the first phase of a greenfield project; MVP mode + Walking Skeleton mode both triggered", "phase": "1"},
-    {"decision": "Verification passed with 3 non-blocking warnings", "rationale": "0 blockers. Warnings: Plan 01 has 15 files (7 are empty stubs), ruff/mypy not in task verify blocks, no-op asyncio fragment in Plan 03 Task 2 verify", "phase": "1"}
+    {"decision": "API key auth added to FastAPI (X-API-Key header)", "rationale": "T-02-01 threat mitigation implemented by executor", "phase": "02"},
+    {"decision": "n8n routes prefixed: /gmail/, /scrape/, /resume/, /application/, /profile/", "rationale": "Executor used APIRouter prefix to avoid conflicts", "phase": "02"}
   ],
   "uncommitted_files": [],
-  "next_action": "Run /gsd:execute-phase 1 in a fresh context window (/clear first)",
-  "context_notes": "Planning session complete. All 3 plans written and verified. 3 waves: Wave 1 = scaffold+DB, Wave 2 = filter engine, Wave 3 = dry-run CLI. Everything committed at 8857c52. No blockers, no uncommitted work."
+  "next_action": "Perform both human checkpoint verifications (Gmail OAuth + Kalibrr selector check), then resume with /gsd-execute-phase to run Wave 3 (plan 02-05)",
+  "context_notes": "Waves 1 and 2 executed successfully. All code is merged to main. 02-02 and 02-03 are code-complete but need human sign-off before Wave 3 can start. 02-04 and 02-01 are fully done. Route prefixes were added by executors — n8n workflows in plan 02-05 must use the prefixed URLs (/gmail/poll-gmail, /scrape/scrape-jobspy, etc.) not the un-prefixed versions in the plan file."
 }
