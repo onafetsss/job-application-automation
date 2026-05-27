@@ -7,7 +7,6 @@ Exports:
 """
 
 import base64
-import os
 
 import structlog
 from google.auth.transport.requests import Request
@@ -152,10 +151,7 @@ def poll_gmail_since(
             .get(userId="me", id=msg_id, format="metadata", metadataHeaders=["From"])
             .execute()
         )
-        headers = {
-            h["name"]: h["value"]
-            for h in msg_meta.get("payload", {}).get("headers", [])
-        }
+        headers = {h["name"]: h["value"] for h in msg_meta.get("payload", {}).get("headers", [])}
         if sender_filter in headers.get("From", ""):
             matching_ids.append(msg_id)
 
@@ -181,9 +177,7 @@ def fetch_message_body(service, message_id: str) -> dict:
     Returns:
         Dict with keys: body_text (str), subject (str | None), sender (str | None).
     """
-    message = (
-        service.users().messages().get(userId="me", id=message_id, format="full").execute()
-    )
+    message = service.users().messages().get(userId="me", id=message_id, format="full").execute()
 
     payload = message.get("payload", {})
 
