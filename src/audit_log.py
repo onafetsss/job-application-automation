@@ -43,7 +43,8 @@ async def write_audit(
 ) -> None:
     """Write one audit log entry to DB and emit a structlog event.
 
-    T-01-04: append-only — only calls session.add(); never UPDATE or DELETE.
+    # audit_log is append-only — never update or delete rows (T-03-02, T-01-04).
+    Caller manages the transaction — do NOT call session.commit() here.
     """
     entry = AuditLogEntry(
         job_id=job_id,
@@ -52,12 +53,14 @@ async def write_audit(
         reason=reason,
         details=details,
     )
+    # audit_log is append-only — never update or delete rows
     session.add(entry)
-    # Also emit to structlog so stdout is a complete audit trail
+    # Also emit to structlog so stdout is a complete audit trail.
+    # Use audit_event kwarg to avoid conflict with structlog's reserved 'event' positional param.
     log.info(
         "audit",
         job_id=job_id,
         source=source,
-        event=event.value,
+        audit_event=event.value,
         reason=reason,
     )
