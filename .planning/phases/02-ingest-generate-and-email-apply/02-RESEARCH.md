@@ -869,31 +869,36 @@ Phase 3 adds stateful browser sessions, conditional branching per form type, cra
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Kalibrr scraper CSS selectors**
    - What we know: Kalibrr is server-rendered HTML (confirmed in STACK.md). httpx + BeautifulSoup4 handles it.
    - What's unclear: Exact CSS selectors for job card title, company, location, and apply URL — these require inspecting a live Kalibrr listing page.
    - Recommendation: Planner should add a task "Inspect Kalibrr HTML and document selectors" as Wave 0 work. Do not hardcode selectors in the plan — they must be verified against live HTML.
+   - **Resolution:** Plan 02-03 adds a checkpoint:human-verify task after scraper implementation requiring live verification that scrape_kalibrr returns actual job data before proceeding.
 
 2. **apply_type detection for email-apply jobs**
    - What we know: The Job model has `apply_type` field (nullable in Phase 1). It must be set during ingestion.
    - What's unclear: How to detect when a job's apply path is email — LinkedIn email digests may not include this signal explicitly. Some job postings include "apply@company.com" in the description.
    - Recommendation: Planner decides. Options: (a) regex for email addresses in JD during ingestion; (b) ask Claude during JD parsing to extract apply email if present; (c) default `apply_type=None` for LinkedIn email leads and skip APPLY-02 for those.
+   - **Resolution:** Plan 02-05 Task 1 gmail-ingest.json sets apply_type="email" explicitly in the /ingest-lead request body for all LinkedIn email leads. This is the simplest correct approach: email digest leads are inherently email-apply candidates.
 
 3. **Stefano's profile storage format**
    - What we know: Per CONTEXT.md discretion, this is unspecified. The cover letter prompt needs structured profile data.
    - What's unclear: YAML? Markdown? How granular? What sections?
    - Recommendation: Use `config/profile.yaml` with sections: `summary`, `key_projects` (list with metrics), `skills`, `target_roles`, `location`. Load at FastAPI startup alongside eligibility config.
+   - **Resolution:** Plan 02-01 creates config/profile.yaml with summary, target_roles, key_projects, skills, location_preference, availability. Plan 02-04 adds load_profile_config() and GET /profile endpoint. n8n ai-apply-pipeline calls GET /profile to inject dynamic profile data into cover letter prompt.
 
 4. **n8n Gmail Trigger vs custom `/poll-gmail` endpoint**
    - What we know: n8n has a built-in Gmail Trigger node. D-04 and D-06 prescribe custom Python historyId implementation.
    - What's unclear: Whether n8n's built-in Gmail Trigger would satisfy D-04/D-06 requirements reliably.
    - Recommendation: Stick with D-06 (custom historyId in Python). The n8n Gmail Trigger has documented duplicate-processing edge cases on restart, and historyId gives explicit dedup guarantees. The custom approach also keeps Gmail OAuth credentials in Python `.env` per D-07.
+   - **Resolution:** Implemented as recommended. Plan 02-02 builds custom /poll-gmail endpoint with historyId tracking in AgentConfig table.
 
 5. **Cover letter format: body vs attachment**
    - What we know: CONTEXT.md D-21 says "cover letter is in the email body or as a second attachment — planner decides format."
    - Recommendation: Cover letter as email body (plain text or HTML). Resume PDF as attachment. This is the standard email application format — recruiters expect the cover letter in the body.
+   - **Resolution:** Implemented as recommended. Plan 02-05 ai-apply-pipeline sends cover letter as email body, resume as attachment.
 
 ---
 
