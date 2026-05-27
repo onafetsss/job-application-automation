@@ -11,6 +11,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.filter.config_loader import load_eligibility_config
+from src.preparation.profile_loader import load_profile_config
 from src.queue.db import get_session_factory, init_db
 
 # T-01-02: load_dotenv() before any os.environ access; no shell expansion of paths
@@ -35,21 +36,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     db_path = os.environ.get("DB_PATH", "data/jobs.db")
     config_path = os.environ.get("ELIGIBILITY_CONFIG_PATH", "config/eligibility.yaml")
     profile_path = os.environ.get("PROFILE_CONFIG_PATH", "config/profile.yaml")
+    resumes_dir = os.environ.get("RESUMES_DIR", "resumes")
 
     await init_db(db_path)
     session_factory = get_session_factory(db_path)
 
-    # Load eligibility config + profile path at startup — same pattern as main.py lines 155-156
+    # Load eligibility config at startup — same pattern as main.py lines 155-156
     eligibility_config = load_eligibility_config(config_path)
     app.state.eligibility_config = eligibility_config
     app.state.session_factory = session_factory
     app.state.profile_config_path = profile_path
+    app.state.resumes_dir = resumes_dir
+
+    # Load profile config at startup — store on app.state for route handlers
+    profile_config = load_profile_config(profile_path)
+    app.state.profile_config = profile_config
 
     log.info(
         "api_startup",
         db_path=db_path,
         config_path=config_path,
         profile_path=profile_path,
+        resumes_dir=resumes_dir,
     )
 
     yield
