@@ -2,14 +2,13 @@
 
 import os
 import sys
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import structlog
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
 from src.filter.config_loader import load_eligibility_config
 from src.queue.db import get_session_factory, init_db
@@ -29,26 +28,21 @@ structlog.configure(
 
 log = structlog.get_logger()
 
-# Module-level session factory — set during lifespan startup
-_session_factory: sessionmaker | None = None  # type: ignore[type-arg]
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Initialize DB, session factory, and config at startup."""
-    global _session_factory
-
     db_path = os.environ.get("DB_PATH", "data/jobs.db")
     config_path = os.environ.get("ELIGIBILITY_CONFIG_PATH", "config/eligibility.yaml")
     profile_path = os.environ.get("PROFILE_CONFIG_PATH", "config/profile.yaml")
 
     await init_db(db_path)
-    _session_factory = get_session_factory(db_path)
+    session_factory = get_session_factory(db_path)
 
     # Load eligibility config + profile path at startup — same pattern as main.py lines 155-156
     eligibility_config = load_eligibility_config(config_path)
     app.state.eligibility_config = eligibility_config
-    app.state.session_factory = _session_factory
+    app.state.session_factory = session_factory
     app.state.profile_config_path = profile_path
 
     log.info(
@@ -71,10 +65,13 @@ app = FastAPI(
 )
 
 
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency — yields an AsyncSession from the app-level session factory."""
-    assert _session_factory is not None, "Session factory not initialized — lifespan must run first"
-    async with _session_factory() as session:
+async def get_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency — yields an AsyncSession from app.state.session_factory.
+
+    FastAPI injects Request automatically when it appears as a parameter in a dependency.
+    All route handlers that need a DB session use: session: AsyncSession = Depends(get_session)
+    """
+    async with request.app.state.session_factory() as session:
         yield session
 
 

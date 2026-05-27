@@ -44,7 +44,8 @@ class Job(Base):
     resume_template = Column(String)
     cover_letter = Column(Text)
     screening_answers = Column(Text)                            # JSON blob
-    screening_questions = Column(Text)                          # raw question text; populated by enrichment (nullable in Phase 2)
+    # screening_questions: raw text extracted during enrichment; nullable in Phase 2
+    screening_questions = Column(Text)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
