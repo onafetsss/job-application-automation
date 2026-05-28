@@ -1,0 +1,206 @@
+{
+  "name": "Kalibrr Scrape",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "ks-01",
+      "name": "Every 4 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/scrape/scrape-kalibrr",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "search_term",
+              "value": "Product Manager"
+            },
+            {
+              "name": "max_pages",
+              "value": "3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fastApiKey",
+          "name": "FastAPI Key"
+        }
+      },
+      "id": "ks-02",
+      "name": "Scrape Kalibrr",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "ks-cond-1",
+              "leftValue": "={{ $json.warning }}",
+              "rightValue": "zero_results_possible_block",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ks-03",
+      "name": "Zero Results Warning?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "jobs",
+        "options": {}
+      },
+      "id": "ks-04",
+      "name": "Split Jobs",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [840, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/ingest/ingest-lead",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "company",
+              "value": "={{ $json.company }}"
+            },
+            {
+              "name": "location",
+              "value": "={{ $json.location }}"
+            },
+            {
+              "name": "url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "source",
+              "value": "kalibrr"
+            },
+            {
+              "name": "clean_jd",
+              "value": "={{ $json.description }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fastApiKey",
+          "name": "FastAPI Key"
+        }
+      },
+      "id": "ks-05",
+      "name": "Ingest Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 380],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ '⚠️ Kalibrr: ' + ($json.warning === 'zero_results_possible_block' ? 'Zero results — possible block' : ('Error: ' + ($json.error?.message || JSON.stringify($json)))) }}",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegramBot",
+          "name": "Telegram Bot"
+        }
+      },
+      "id": "ks-06",
+      "name": "Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [840, 220]
+    }
+  ],
+  "connections": {
+    "Every 4 Hours": {
+      "main": [
+        [{"node": "Scrape Kalibrr", "type": "main", "index": 0}]
+      ]
+    },
+    "Scrape Kalibrr": {
+      "main": [
+        [{"node": "Zero Results Warning?", "type": "main", "index": 0}],
+        [{"node": "Telegram Alert", "type": "main", "index": 0}]
+      ]
+    },
+    "Zero Results Warning?": {
+      "main": [
+        [{"node": "Telegram Alert", "type": "main", "index": 0}],
+        [{"node": "Split Jobs", "type": "main", "index": 0}]
+      ]
+    },
+    "Split Jobs": {
+      "main": [
+        [{"node": "Ingest Lead", "type": "main", "index": 0}]
+      ]
+    },
+    "Ingest Lead": {
+      "main": [
+        [],
+        [{"node": "Telegram Alert", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "kalibrr-scrape-v1",
+  "meta": {
+    "instanceId": ""
+  },
+  "id": "kalibrr-scrape-01",
+  "tags": []
+}

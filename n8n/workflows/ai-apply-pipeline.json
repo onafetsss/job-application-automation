@@ -1,0 +1,548 @@
+{
+  "name": "AI Apply Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "ap-01",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://api:8000/profile",
+        "options": {}
+      },
+      "id": "ap-02",
+      "name": "Get Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://api:8000/application/queued-email-jobs",
+        "options": {}
+      },
+      "id": "ap-03",
+      "name": "Get Queued Email Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "ap-cond-1",
+              "leftValue": "={{ $json.jobs }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ap-04",
+      "name": "Any Jobs?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [840, 400]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "jobs",
+        "options": {}
+      },
+      "id": "ap-05",
+      "name": "Split Jobs",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [1040, 320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/resume/select-resume",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "job_id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "job_description",
+              "value": "={{ $json.clean_jd || '' }}"
+            },
+            {
+              "name": "job_title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "company",
+              "value": "={{ $json.company }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ap-06",
+      "name": "Select Resume",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1240, 320],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ap-set-1",
+              "name": "job_id",
+              "value": "={{ $('Split Jobs').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "ap-set-2",
+              "name": "title",
+              "value": "={{ $('Split Jobs').item.json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "ap-set-3",
+              "name": "company",
+              "value": "={{ $('Split Jobs').item.json.company }}",
+              "type": "string"
+            },
+            {
+              "id": "ap-set-4",
+              "name": "url",
+              "value": "={{ $('Split Jobs').item.json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "ap-set-5",
+              "name": "clean_jd",
+              "value": "={{ $('Split Jobs').item.json.clean_jd || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "ap-set-6",
+              "name": "screening_questions",
+              "value": "={{ $('Split Jobs').item.json.screening_questions || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "ap-set-7",
+              "name": "resume_name",
+              "value": "={{ $json.resume_name }}",
+              "type": "string"
+            },
+            {
+              "id": "ap-set-8",
+              "name": "resume_text",
+              "value": "={{ $json.resume_text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ap-07",
+      "name": "Combine Job + Resume",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1440, 320]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "ap-cond-2",
+              "leftValue": "={{ $json.screening_questions }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ap-08",
+      "name": "Has Screening Questions?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1640, 320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/application/generate-screening-answers",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "job_id",
+              "value": "={{ $json.job_id }}"
+            },
+            {
+              "name": "screening_questions",
+              "value": "={{ $json.screening_questions.split('\\n').filter(q => q.trim()) }}"
+            },
+            {
+              "name": "job_description",
+              "value": "={{ $json.clean_jd }}"
+            },
+            {
+              "name": "job_title",
+              "value": "={{ $json.title }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ap-09",
+      "name": "Generate Screening Answers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1840, 240]
+    },
+    {
+      "parameters": {
+        "mode": "append",
+        "options": {}
+      },
+      "id": "ap-10",
+      "name": "Merge After Screening",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [2040, 320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 2048, system: 'You are a professional cover letter writer. Write a concise, tailored, and compelling cover letter. Use only the applicant profile and job details provided. Output only the cover letter text — no subject line, no extra commentary.', messages: [{ role: 'user', content: 'Write a cover letter for this job application:\\n\\nJob Title: ' + $('Combine Job + Resume').item.json.title + '\\nCompany: ' + $('Combine Job + Resume').item.json.company + '\\n\\nJob Description:\\n' + ($('Combine Job + Resume').item.json.clean_jd || '').substring(0, 1500) + '\\n\\nApplicant Profile:\\nSummary: ' + $('Get Profile').first().json.summary + '\\nTarget Roles: ' + ($('Get Profile').first().json.target_roles || []).join(', ') + '\\nSkills: ' + ($('Get Profile').first().json.skills || []).join(', ') + '\\nLocation Preference: ' + $('Get Profile').first().json.location_preference + '\\nAvailability: ' + $('Get Profile').first().json.availability + '\\n\\nResume:\\n' + ($('Combine Job + Resume').item.json.resume_text || '').substring(0, 2000) }] }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "anthropicApi",
+          "name": "anthropicApi"
+        }
+      },
+      "id": "ap-11",
+      "name": "Generate Cover Letter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2240, 320],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ap-cover-1",
+              "name": "cover_letter",
+              "value": "={{ $json.content[0].text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "ap-12",
+      "name": "Extract Cover Letter",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2440, 320]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/application/write-application",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "job_id",
+              "value": "={{ $('Combine Job + Resume').item.json.job_id }}"
+            },
+            {
+              "name": "resume_name",
+              "value": "={{ $('Combine Job + Resume').item.json.resume_name }}"
+            },
+            {
+              "name": "cover_letter",
+              "value": "={{ $json.cover_letter }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ap-13",
+      "name": "Write Application",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2640, 320],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=http://api:8000/resume/resume-file/{{ $('Combine Job + Resume').item.json.resume_name }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "id": "ap-14",
+      "name": "Fetch Resume Binary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2840, 320]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "subject": "=Application for {{ $('Combine Job + Resume').item.json.title }} at {{ $('Combine Job + Resume').item.json.company }} - Stefano D'Silva",
+        "message": "={{ $('Extract Cover Letter').item.json.cover_letter }}",
+        "toList": "={{ $env.APPLY_TO_EMAIL }}",
+        "attachmentsUi": {
+          "attachmentsBinary": [
+            {
+              "property": "data"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmailOAuth2",
+          "name": "Gmail OAuth2"
+        }
+      },
+      "id": "ap-15",
+      "name": "Send Application Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [3040, 320],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/application/mark-submitted",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "job_id",
+              "value": "={{ $('Combine Job + Resume').item.json.job_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ap-16",
+      "name": "Mark Submitted",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3240, 320]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ '✅ Application sent!\\n\\n🏢 ' + $('Combine Job + Resume').item.json.company + '\\n💼 ' + $('Combine Job + Resume').item.json.title + '\\n📄 Resume: ' + $('Combine Job + Resume').item.json.resume_name + '\\n🔗 ' + $('Combine Job + Resume').item.json.url + ($('Combine Job + Resume').item.json.screening_questions ? '\\n📋 Screening answers included' : '') }}",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegramBot",
+          "name": "Telegram Bot"
+        }
+      },
+      "id": "ap-17",
+      "name": "Telegram Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [3440, 320]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ '⚠️ Apply Pipeline Error\\n\\n' + ($json.error?.message || JSON.stringify($json)) }}",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegramBot",
+          "name": "Telegram Bot"
+        }
+      },
+      "id": "ap-18",
+      "name": "Pipeline Error Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [2440, 480]
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [{"node": "Get Profile", "type": "main", "index": 0}]
+      ]
+    },
+    "Get Profile": {
+      "main": [
+        [{"node": "Get Queued Email Jobs", "type": "main", "index": 0}]
+      ]
+    },
+    "Get Queued Email Jobs": {
+      "main": [
+        [{"node": "Any Jobs?", "type": "main", "index": 0}]
+      ]
+    },
+    "Any Jobs?": {
+      "main": [
+        [{"node": "Split Jobs", "type": "main", "index": 0}]
+      ]
+    },
+    "Split Jobs": {
+      "main": [
+        [{"node": "Select Resume", "type": "main", "index": 0}]
+      ]
+    },
+    "Select Resume": {
+      "main": [
+        [{"node": "Combine Job + Resume", "type": "main", "index": 0}],
+        [{"node": "Pipeline Error Alert", "type": "main", "index": 0}]
+      ]
+    },
+    "Combine Job + Resume": {
+      "main": [
+        [{"node": "Has Screening Questions?", "type": "main", "index": 0}]
+      ]
+    },
+    "Has Screening Questions?": {
+      "main": [
+        [{"node": "Generate Screening Answers", "type": "main", "index": 0}],
+        [{"node": "Merge After Screening", "type": "main", "index": 1}]
+      ]
+    },
+    "Generate Screening Answers": {
+      "main": [
+        [{"node": "Merge After Screening", "type": "main", "index": 0}]
+      ]
+    },
+    "Merge After Screening": {
+      "main": [
+        [{"node": "Generate Cover Letter", "type": "main", "index": 0}]
+      ]
+    },
+    "Generate Cover Letter": {
+      "main": [
+        [{"node": "Extract Cover Letter", "type": "main", "index": 0}],
+        [{"node": "Pipeline Error Alert", "type": "main", "index": 0}]
+      ]
+    },
+    "Extract Cover Letter": {
+      "main": [
+        [{"node": "Write Application", "type": "main", "index": 0}]
+      ]
+    },
+    "Write Application": {
+      "main": [
+        [{"node": "Fetch Resume Binary", "type": "main", "index": 0}],
+        [{"node": "Pipeline Error Alert", "type": "main", "index": 0}]
+      ]
+    },
+    "Fetch Resume Binary": {
+      "main": [
+        [{"node": "Send Application Email", "type": "main", "index": 0}]
+      ]
+    },
+    "Send Application Email": {
+      "main": [
+        [{"node": "Mark Submitted", "type": "main", "index": 0}],
+        [{"node": "Pipeline Error Alert", "type": "main", "index": 0}]
+      ]
+    },
+    "Mark Submitted": {
+      "main": [
+        [{"node": "Telegram Notification", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ai-apply-pipeline-v1",
+  "meta": {
+    "instanceId": ""
+  },
+  "id": "ai-apply-pipeline-01",
+  "tags": []
+}

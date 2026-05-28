@@ -1,9 +1,11 @@
 """Resume routes — POST /select-resume uses Claude Haiku for LLM-based resume matching."""
 
+from pathlib import Path
+
 import anthropic
 import structlog
-from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
 
 from src.api.schemas import SelectResumeIn, SelectResumeOut
 from src.preparation.resume_reader import list_resumes
@@ -110,3 +112,26 @@ async def select_resume(
         resume_name=matched_resume["name"],
         resume_text=matched_resume["text"],
     )
+
+
+@router.get("/resume-file/{resume_name}")
+async def get_resume_file(resume_name: str, request: Request) -> FileResponse:
+    """Serve a resume file as binary for n8n email attachment use."""
+    resumes_dir = Path(getattr(request.app.state, "resumes_dir", "resumes"))
+    file_path = (resumes_dir / resume_name).resolve()
+
+    # Path traversal protection
+    if not str(file_path).startswith(str(resumes_dir.resolve())):
+        raise HTTPException(status_code=400, detail="invalid_path")
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="resume_not_found")
+
+    if resume_name.endswith(".pdf"):
+        media_type = "application/pdf"
+    elif resume_name.endswith(".docx"):
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    else:
+        media_type = "application/octet-stream"
+
+    return FileResponse(str(file_path), media_type=media_type, filename=resume_name)

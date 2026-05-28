@@ -1,0 +1,285 @@
+{
+  "name": "Gmail Ingest",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "gi-01",
+      "name": "Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/gmail/poll-gmail",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fastApiKey",
+          "name": "FastAPI Key"
+        }
+      },
+      "id": "gi-02",
+      "name": "Poll Gmail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "gi-cond-1",
+              "leftValue": "={{ $json.message_ids }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "gi-03",
+      "name": "Has Messages?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "message_ids",
+        "options": {}
+      },
+      "id": "gi-04",
+      "name": "Split Message IDs",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [840, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/gmail/fetch-email-body",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message_id",
+              "value": "={{ $json.message_ids }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fastApiKey",
+          "name": "FastAPI Key"
+        }
+      },
+      "id": "gi-05",
+      "name": "Fetch Email Body",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 220],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ model: 'claude-haiku-3-5-20251001', max_tokens: 1024, system: 'Extract job listings from this email. Return a JSON object with a jobs array. Each job must have: title (string), company (string), location (string or null), url (string). Return only valid JSON, no other text.', messages: [{ role: 'user', content: $json.body_text }] }) }}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "anthropicApi",
+          "name": "anthropicApi"
+        }
+      },
+      "id": "gi-06",
+      "name": "Extract Jobs with Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1240, 220]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const text = $input.item.json.content[0].text;\nlet jobs = [];\ntry {\n  const parsed = JSON.parse(text);\n  jobs = parsed.jobs || [];\n} catch(e) {\n  const match = text.match(/\\{[\\s\\S]*\\}/);\n  if (match) {\n    try { jobs = JSON.parse(match[0]).jobs || []; } catch(e2) {}\n  }\n}\nreturn jobs.map(job => ({ json: job }));"
+      },
+      "id": "gi-07",
+      "name": "Parse Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/ingest/ingest-lead",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "company",
+              "value": "={{ $json.company }}"
+            },
+            {
+              "name": "location",
+              "value": "={{ $json.location }}"
+            },
+            {
+              "name": "url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "source",
+              "value": "linkedin_email"
+            },
+            {
+              "name": "apply_type",
+              "value": "email"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fastApiKey",
+          "name": "FastAPI Key"
+        }
+      },
+      "id": "gi-08",
+      "name": "Ingest Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1640, 220],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ '⚠️ Gmail Ingest error/503: ' + ($json.error?.message || JSON.stringify($json)) }}",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegramBot",
+          "name": "Telegram Bot"
+        }
+      },
+      "id": "gi-09",
+      "name": "Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [840, 440]
+    }
+  ],
+  "connections": {
+    "Every Hour": {
+      "main": [
+        [{"node": "Poll Gmail", "type": "main", "index": 0}]
+      ]
+    },
+    "Poll Gmail": {
+      "main": [
+        [{"node": "Has Messages?", "type": "main", "index": 0}],
+        [{"node": "Telegram Alert", "type": "main", "index": 0}]
+      ]
+    },
+    "Has Messages?": {
+      "main": [
+        [{"node": "Split Message IDs", "type": "main", "index": 0}]
+      ]
+    },
+    "Split Message IDs": {
+      "main": [
+        [{"node": "Fetch Email Body", "type": "main", "index": 0}]
+      ]
+    },
+    "Fetch Email Body": {
+      "main": [
+        [{"node": "Extract Jobs with Claude", "type": "main", "index": 0}],
+        [{"node": "Telegram Alert", "type": "main", "index": 0}]
+      ]
+    },
+    "Extract Jobs with Claude": {
+      "main": [
+        [{"node": "Parse Jobs", "type": "main", "index": 0}]
+      ]
+    },
+    "Parse Jobs": {
+      "main": [
+        [{"node": "Ingest Lead", "type": "main", "index": 0}]
+      ]
+    },
+    "Ingest Lead": {
+      "main": [
+        [],
+        [{"node": "Telegram Alert", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "gmail-ingest-v1",
+  "meta": {
+    "instanceId": ""
+  },
+  "id": "gmail-ingest-01",
+  "tags": []
+}

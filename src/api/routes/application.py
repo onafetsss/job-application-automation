@@ -236,3 +236,29 @@ async def mark_submitted(
         log.info("mark_submitted", job_id=job.id)
 
     return {"status": "ok", "job_id": payload.job_id}
+
+
+@router.get("/queued-email-jobs")
+async def queued_email_jobs(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> dict:
+    """Return jobs with status=QUEUED and apply_type='email' for the n8n apply pipeline."""
+    async with session.begin():
+        result = await session.execute(
+            select(Job).where(Job.status == JobStatus.QUEUED, Job.apply_type == "email")
+        )
+        jobs = result.scalars().all()
+    return {
+        "jobs": [
+            {
+                "id": job.id,
+                "title": job.title,
+                "company": job.company,
+                "url": job.url,
+                "clean_jd": job.clean_jd,
+                "screening_questions": job.screening_questions,
+                "apply_type": job.apply_type,
+            }
+            for job in jobs
+        ]
+    }

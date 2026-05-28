@@ -1,0 +1,48 @@
+{
+  "name": "Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "eh-01",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ '🚨 Workflow Error\\n\\nWorkflow: ' + $json.workflow.name + '\\nError: ' + $json.execution.error.message + '\\nLast node: ' + $json.execution.lastNodeExecuted }}",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegramBot",
+          "name": "Telegram Bot"
+        }
+      },
+      "id": "eh-02",
+      "name": "Telegram Error Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [440, 300]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [{"node": "Telegram Error Alert", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "error-handler-v1",
+  "meta": {
+    "instanceId": ""
+  },
+  "id": "error-handler-01",
+  "tags": []
+}

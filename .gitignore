@@ -8,3 +8,4 @@ browser_profiles/
 *.pyc
 dist/
 .venv/
+n8n_storage/
