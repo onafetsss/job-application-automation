@@ -126,7 +126,83 @@ Conventions not yet established. Will populate as patterns emerge during develop
 <!-- GSD:architecture-start source:ARCHITECTURE.md -->
 ## Architecture
 
-Architecture not yet mapped. Follow existing patterns found in the codebase.
+### Folder Structure
+
+```
+Job Application Automation/
+├── main.py                     # CLI entry point (agent runner)
+├── pyproject.toml              # Project config, deps, tool settings (uv)
+├── uv.lock                     # Locked dependency manifest
+├── docker-compose.yml          # Orchestrates API + n8n services
+│
+├── docker/                     # Container definitions
+│   ├── Dockerfile              # Agent runner image (main.py)
+│   └── Dockerfile.api          # FastAPI service image (src/api/)
+│
+├── config/                     # User-configurable YAML files
+│   ├── eligibility.yaml        # Job filter rules (salary, location, role type)
+│   └── profile.yaml            # Stefano's professional profile for AI prompts
+│
+├── resumes/                    # Resume PDF/DOCX templates
+│   └── *.pdf                   # Role-specific resume variants
+│
+├── data/                       # Runtime data (gitignored)
+│   └── jobs.db                 # SQLite: job queue, audit log, app state
+│
+├── n8n/                        # n8n automation layer
+│   ├── README.md
+│   └── workflows/              # Exported n8n workflow JSON files
+│       ├── ai-apply-pipeline.json
+│       ├── gmail-ingest.json
+│       ├── jobspy-scrape.json
+│       ├── kalibrr-scrape.json
+│       └── ...
+│
+├── scripts/                    # One-off utility scripts
+│   └── gmail_oauth.py          # OAuth token setup for Gmail API
+│
+├── src/                        # Core application source
+│   ├── api/                    # FastAPI HTTP layer
+│   │   ├── app.py              # App factory, middleware, startup
+│   │   ├── schemas.py          # Pydantic request/response models
+│   │   └── routes/             # Route handlers
+│   │       ├── application.py  # POST /apply, GET /jobs
+│   │       ├── gmail.py        # Gmail OAuth + message routes
+│   │       ├── ingest.py       # Trigger ingestion runs
+│   │       ├── profile.py      # Profile YAML read/update
+│   │       ├── resume.py       # Resume library management
+│   │       └── scrape.py       # Trigger scrape runs
+│   ├── filter/                 # Job filtering logic
+│   │   ├── config_loader.py    # Loads eligibility.yaml → Pydantic model
+│   │   ├── dedup.py            # Deduplication against jobs.db
+│   │   └── eligibility.py      # Eligibility scoring / decision rules
+│   ├── ingestion/              # Job source scrapers
+│   │   ├── gmail_client.py     # Gmail API: parse job alert digests
+│   │   ├── jobspy_runner.py    # JobSpy: Indeed/LinkedIn/Glassdoor scrape
+│   │   └── kalibrr_scraper.py  # Custom httpx+BS4 Kalibrr scraper
+│   ├── preparation/            # Resume + profile loading for AI prompts
+│   │   ├── profile_loader.py   # Loads profile.yaml
+│   │   └── resume_reader.py    # Extracts text from PDF/DOCX resumes
+│   ├── queue/                  # Job state and persistence
+│   │   ├── db.py               # DB init, connection factory (aiosqlite)
+│   │   └── models.py           # SQLite table schemas / ORM models
+│   └── audit_log.py            # Structured audit logging to SQLite
+│
+└── tests/
+    ├── integration/            # End-to-end tests against real DB/API
+    └── unit/                   # Isolated unit tests
+```
+
+### Data Flow
+
+```
+Job Boards (JobSpy / Kalibrr / Gmail)
+    → src/ingestion/            scrape & normalize jobs
+    → src/filter/               dedup + eligibility scoring
+    → src/queue/                persist to jobs.db
+    → n8n ai-apply-pipeline     AI cover letter + form submit
+    → src/api/routes/           HTTP surface for n8n + manual ops
+```
 <!-- GSD:architecture-end -->
 
 <!-- GSD:skills-start source:skills/ -->

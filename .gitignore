@@ -4,6 +4,7 @@ __pycache__/
 *.db
 .mypy_cache/
 .ruff_cache/
+.graphify-out/
 browser_profiles/
 *.pyc
 dist/
