@@ -4,10 +4,16 @@
 roles:
   include:
     # Job title must contain at least one of these strings (case-insensitive)
-    - "Product Manager"
-    - "Senior Product Manager"
-    - "Principal Product Manager"
-    - "Head of Product"
+    - "Business Development"
+    - "Growth Marketing"
+    - "Growth Manager"
+    - "Head of Growth"
+    - "B2B Sales"
+    - "Account Executive"
+    - "Sales Manager"
+    - "Commercial Manager"
+    - "Partnerships Manager"
+    - "Revenue Manager"
   exclude:
     # Reject if title contains any of these (applied after include check)
     - "Internship"
