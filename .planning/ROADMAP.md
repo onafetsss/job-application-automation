@@ -87,7 +87,19 @@ Cross-cutting constraints:
   2. The browser session passes a bot-detection fingerprinting test (bot.sannysoft.com or equivalent) before any live LinkedIn run begins
   3. When a CAPTCHA or "unusual activity" page is detected during a LinkedIn session, automation stops immediately and a Telegram alert fires (no silent hang, no crash)
   4. Daily LinkedIn submissions are capped at 15-20 with randomized timing; the system does not submit more than the cap even if more jobs are queued
-**Plans**: TBD
+**Plans**: 4 plans
+
+**Wave 1**
+- [ ] 03-01-PLAN.md — Foundation: camoufox dependency + Docker xvfb/fetch, JobStatus.SKIPPED, LINKEDIN_* env vars, Wave 0 test scaffolds (legitimacy checkpoint)
+
+**Wave 2** *(blocked on Wave 1)*
+- [ ] 03-02-PLAN.md — LinkedInApplier browser module: Camoufox session, challenge detection, modal navigation, field fill; screening logic extracted to shared function
+
+**Wave 3** *(blocked on Wave 2)*
+- [ ] 03-03-PLAN.md — FastAPI /apply router: POST linkedin-easy-apply, GET daily-linkedin-count, GET queued-linkedin-jobs; schemas + registration
+
+**Wave 4** *(blocked on Wave 3)*
+- [ ] 03-04-PLAN.md — n8n linkedin-easy-apply workflow (daily cap, randomized timing, Telegram routing), gmail-ingest apply_type fix (D-02), session save script, live fingerprint + apply checkpoint
 
 ### Phase 4: Dashboard CRM and Additional Sources
 **Goal**: The web dashboard shows every application with status, stats, and job detail; Stefano can update statuses and add notes; Gmail history for the last 6 months is imported on first run; Kalibrr and generic web forms are active submission channels
@@ -110,5 +122,5 @@ Cross-cutting constraints:
 |-------|----------------|--------|-----------|
 | 1. Foundation | 5/5 | Complete   | 2026-05-27 |
 | 2. Ingest, Generate, and Email Apply | 4/5 | In Progress|  |
-| 3. LinkedIn Easy Apply | 0/TBD | Not started | - |
+| 3. LinkedIn Easy Apply | 0/4 | Not started | - |
 | 4. Dashboard CRM and Additional Sources | 0/TBD | Not started | - |
