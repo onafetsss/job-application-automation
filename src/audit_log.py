@@ -21,6 +21,7 @@ class AuditEvent(StrEnum):
     APPLYING = "APPLYING"
     SUBMITTED = "SUBMITTED"
     FAILED = "FAILED"
+    SKIPPED = "SKIPPED"
     NOTIFIED = "NOTIFIED"
 
 
