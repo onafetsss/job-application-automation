@@ -21,7 +21,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://api:8000/scrape/scrape-jobspy",
+        "url": "http://job-app-api:8000/scrape/scrape-jobspy",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
@@ -108,7 +108,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://api:8000/ingest/ingest-lead",
+        "url": "http://job-app-api:8000/ingest/ingest-lead",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,

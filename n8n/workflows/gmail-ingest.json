@@ -21,7 +21,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://api:8000/gmail/poll-gmail",
+        "url": "http://job-app-api:8000/gmail/poll-gmail",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -82,7 +82,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://api:8000/gmail/fetch-email-body",
+        "url": "http://job-app-api:8000/gmail/fetch-email-body",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
@@ -160,7 +160,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://api:8000/ingest/ingest-lead",
+        "url": "http://job-app-api:8000/ingest/ingest-lead",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,

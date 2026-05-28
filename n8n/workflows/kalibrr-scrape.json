@@ -21,7 +21,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://api:8000/scrape/scrape-kalibrr",
+        "url": "http://job-app-api:8000/scrape/scrape-kalibrr",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
@@ -96,7 +96,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://api:8000/ingest/ingest-lead",
+        "url": "http://job-app-api:8000/ingest/ingest-lead",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,

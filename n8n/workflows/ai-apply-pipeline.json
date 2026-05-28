@@ -21,7 +21,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "http://api:8000/profile",
+        "url": "http://job-app-api:8000/profile",
         "options": {}
       },
       "id": "ap-02",
@@ -33,7 +33,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "http://api:8000/application/queued-email-jobs",
+        "url": "http://job-app-api:8000/application/queued-email-jobs",
         "options": {}
       },
       "id": "ap-03",
@@ -85,7 +85,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://api:8000/resume/select-resume",
+        "url": "http://job-app-api:8000/resume/select-resume",
         "sendBody": true,
         "contentType": "json",
         "bodyParameters": {
@@ -211,7 +211,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://api:8000/application/generate-screening-answers",
+        "url": "http://job-app-api:8000/application/generate-screening-answers",
         "sendBody": true,
         "contentType": "json",
         "bodyParameters": {
@@ -314,7 +314,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://api:8000/application/write-application",
+        "url": "http://job-app-api:8000/application/write-application",
         "sendBody": true,
         "contentType": "json",
         "bodyParameters": {
@@ -345,7 +345,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "=http://api:8000/resume/resume-file/{{ $('Combine Job + Resume').item.json.resume_name }}",
+        "url": "=http://job-app-api:8000/resume/resume-file/{{ $('Combine Job + Resume').item.json.resume_name }}",
         "options": {
           "response": {
             "response": {
@@ -392,7 +392,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://api:8000/application/mark-submitted",
+        "url": "http://job-app-api:8000/application/mark-submitted",
         "sendBody": true,
         "contentType": "json",
         "bodyParameters": {
