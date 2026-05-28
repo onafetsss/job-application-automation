@@ -203,6 +203,21 @@ def fetch_message_body(service, message_id: str) -> dict:
     }
 
 
+def resolve_apply_type(url: str) -> str:
+    """Resolve apply_type from a job URL string.
+
+    Returns 'linkedin_easy_apply' when the URL contains 'linkedin.com',
+    otherwise returns 'email' (the default apply type for email-sourced jobs).
+
+    Args:
+        url: The job application URL extracted from the email or workflow.
+
+    Returns:
+        'linkedin_easy_apply' for LinkedIn URLs, 'email' for all others.
+    """
+    return "linkedin_easy_apply" if "linkedin.com" in url.lower() else "email"
+
+
 def _extract_plain_text(payload: dict) -> str:
     """Recursively extract text/plain body from a MIME payload dict.
 

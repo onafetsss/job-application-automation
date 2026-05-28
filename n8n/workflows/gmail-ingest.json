@@ -159,6 +159,17 @@
     },
     {
       "parameters": {
+        "language": "javaScript",
+        "jsCode": "return $input.all().map(item => {\n  const url = (item.json.url || '').toLowerCase();\n  const applyType = url.includes('linkedin.com') ? 'linkedin_easy_apply' : 'email';\n  return { json: { ...item.json, apply_type: applyType } };\n});"
+      },
+      "id": "gi-10",
+      "name": "Set Apply Type",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 220]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "http://job-app-api:8000/ingest/ingest-lead",
         "authentication": "genericCredentialType",
@@ -189,7 +200,7 @@
             },
             {
               "name": "apply_type",
-              "value": "email"
+              "value": "={{ $json.apply_type }}"
             }
           ]
         },
@@ -205,7 +216,7 @@
       "name": "Ingest Lead",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1640, 220],
+      "position": [1740, 220],
       "onError": "continueErrorOutput"
     },
     {
@@ -261,6 +272,11 @@
       ]
     },
     "Parse Jobs": {
+      "main": [
+        [{"node": "Set Apply Type", "type": "main", "index": 0}]
+      ]
+    },
+    "Set Apply Type": {
       "main": [
         [{"node": "Ingest Lead", "type": "main", "index": 0}]
       ]
