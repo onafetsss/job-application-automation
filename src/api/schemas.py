@@ -115,3 +115,17 @@ class ProfileOut(BaseModel):
     skills: list[str]
     location_preference: str
     availability: str
+
+
+class LinkedInApplyIn(BaseModel):
+    """Payload for POST /apply/linkedin-easy-apply."""
+
+    job_id: str
+
+
+class LinkedInApplyOut(BaseModel):
+    """Response for POST /apply/linkedin-easy-apply."""
+
+    status: str  # "submitted" | "skipped" | "challenge_detected"
+    job_id: str
+    reason: str | None = None

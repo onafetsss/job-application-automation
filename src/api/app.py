@@ -98,7 +98,7 @@ async def verify_api_key(x_api_key: str | None = Header(default=None)) -> None:
 # Re-export get_session and verify_api_key for route imports
 __all__ = ["app", "get_session", "verify_api_key"]
 
-# Register all six routers
+# Register all routers
 from src.api.routes import (  # noqa: E402
     application,
     gmail,
@@ -107,6 +107,7 @@ from src.api.routes import (  # noqa: E402
     resume,
     scrape,
 )
+from src.api.routes.apply import linkedin_apply  # noqa: E402
 
 app.include_router(ingest.router, prefix="/ingest", tags=["ingest"])
 app.include_router(gmail.router, prefix="/gmail", tags=["gmail"])
@@ -114,3 +115,4 @@ app.include_router(scrape.router, prefix="/scrape", tags=["scrape"])
 app.include_router(resume.router, prefix="/resume", tags=["resume"])
 app.include_router(application.router, prefix="/application", tags=["application"])
 app.include_router(profile.router, prefix="/profile", tags=["profile"])
+app.include_router(linkedin_apply.router, prefix="/apply", tags=["apply"])
