@@ -30,7 +30,7 @@ def get_engine(db_path: str = "data/jobs.db") -> AsyncEngine:
         _engine = create_async_engine(
             f"sqlite+aiosqlite:///{db_path}",
             echo=False,
-            connect_args={"check_same_thread": False},
+            connect_args={"check_same_thread": False, "timeout": 30},
         )
     return _engine
 
