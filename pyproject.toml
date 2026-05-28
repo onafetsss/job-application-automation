@@ -23,6 +23,7 @@ dependencies = [
     "anthropic>=0.20",
     "httpx>=0.25",
     "beautifulsoup4>=4.12",
+    "camoufox>=0.4.11",
 ]
 
 [tool.ruff]

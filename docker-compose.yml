@@ -27,6 +27,10 @@ services:
       - GOOGLE_TOKEN_PATH=/app/.google_token.json
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - RESUMES_DIR=/app/resumes
+      - LINKEDIN_PROFILE_DIR=/data/linkedin_profile
+      - LINKEDIN_APPLY_WINDOW_START=${LINKEDIN_APPLY_WINDOW_START:-9}
+      - LINKEDIN_APPLY_WINDOW_END=${LINKEDIN_APPLY_WINDOW_END:-17}
+      - LINKEDIN_DAILY_CAP=${LINKEDIN_DAILY_CAP:-17}
     volumes:
       - ./data:/data
       - ./config:/app/config
