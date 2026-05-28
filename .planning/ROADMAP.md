@@ -93,7 +93,7 @@ Cross-cutting constraints:
 - [x] 03-01-PLAN.md — Foundation: camoufox dependency + Docker xvfb/fetch, JobStatus.SKIPPED, LINKEDIN_* env vars, Wave 0 test scaffolds (legitimacy checkpoint)
 
 **Wave 2** *(blocked on Wave 1)*
-- [ ] 03-02-PLAN.md — LinkedInApplier browser module: Camoufox session, challenge detection, modal navigation, field fill; screening logic extracted to shared function
+- [x] 03-02-PLAN.md — LinkedInApplier browser module: Camoufox session, challenge detection, modal navigation, field fill; screening logic extracted to shared function
 
 **Wave 3** *(blocked on Wave 2)*
 - [ ] 03-03-PLAN.md — FastAPI /apply router: POST linkedin-easy-apply, GET daily-linkedin-count, GET queued-linkedin-jobs; schemas + registration
@@ -122,5 +122,5 @@ Cross-cutting constraints:
 |-------|----------------|--------|-----------|
 | 1. Foundation | 5/5 | Complete   | 2026-05-27 |
 | 2. Ingest, Generate, and Email Apply | 4/5 | In Progress|  |
-| 3. LinkedIn Easy Apply | 1/4 | In Progress | - |
+| 3. LinkedIn Easy Apply | 2/4 | In Progress | - |
 | 4. Dashboard CRM and Additional Sources | 0/TBD | Not started | - |
