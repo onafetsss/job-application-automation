@@ -1,0 +1,247 @@
+{
+  "name": "LinkedIn Easy Apply",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "li-01",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://job-app-api:8000/apply/daily-linkedin-count",
+        "options": {}
+      },
+      "id": "li-02",
+      "name": "Get Daily Count",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 400]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const now = new Date();\nconst hour = now.getHours();\nconst windowStart = parseInt($env.LINKEDIN_APPLY_WINDOW_START || '9');\nconst windowEnd = parseInt($env.LINKEDIN_APPLY_WINDOW_END || '17');\nif (hour < windowStart || hour >= windowEnd) {\n  return [{ json: { proceed: false, reason: 'outside_window' } }];\n}\nconst dailyCount = $('Get Daily Count').first().json.count;\nconst cap = parseInt($env.LINKEDIN_DAILY_CAP || '17');\nif (dailyCount >= cap) {\n  return [{ json: { proceed: false, reason: 'cap_reached' } }];\n}\nconst minDelay = 60 * 8;\nconst maxDelay = 60 * 25;\nconst randomDelay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;\nreturn [{ json: { proceed: true, waitSeconds: randomDelay } }];"
+      },
+      "id": "li-04",
+      "name": "Check Cap + Window",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "li-cond-1",
+              "leftValue": "={{ $json.proceed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "li-05",
+      "name": "Proceed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [840, 400]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://job-app-api:8000/apply/queued-linkedin-jobs",
+        "options": {}
+      },
+      "id": "li-06",
+      "name": "Get Next LinkedIn Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 320]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "li-cond-2",
+              "leftValue": "={{ $json.jobs }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "li-06a",
+      "name": "Any Jobs?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1240, 320]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $('Check Cap + Window').first().json.waitSeconds }}",
+        "unit": "seconds"
+      },
+      "id": "li-06b",
+      "name": "Random Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1440, 240],
+      "webhookId": "li-06b-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://job-app-api:8000/apply/linkedin-easy-apply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "job_id",
+              "value": "={{ $('Get Next LinkedIn Job').first().json.jobs[0].id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fastApiKey",
+          "name": "FastAPI Key"
+        }
+      },
+      "id": "li-07",
+      "name": "Apply LinkedIn Easy Apply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1640, 240],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ '\\u2705 LinkedIn Easy Apply submitted!\\n\\n\\ud83c\\udfe2 ' + $('Get Next LinkedIn Job').first().json.jobs[0].company + '\\n\\ud83d\\udcbc ' + $('Get Next LinkedIn Job').first().json.jobs[0].title + '\\n\\ud83d\\udd17 ' + $('Get Next LinkedIn Job').first().json.jobs[0].url }}",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegramBot",
+          "name": "Telegram Bot"
+        }
+      },
+      "id": "li-08",
+      "name": "Telegram Success",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1840, 160]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ '\\u26a0\\ufe0f LinkedIn challenge detected: ' + ($json.error?.message || JSON.stringify($json)) + ' \\u2014 automation paused. Resolve manually, then reactivate the LinkedIn workflow in n8n.' }}",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "telegramBot",
+          "name": "Telegram Bot"
+        }
+      },
+      "id": "li-09",
+      "name": "Challenge Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1840, 400]
+    }
+  ],
+  "connections": {
+    "Every 5 Minutes": {
+      "main": [
+        [{"node": "Get Daily Count", "type": "main", "index": 0}]
+      ]
+    },
+    "Get Daily Count": {
+      "main": [
+        [{"node": "Check Cap + Window", "type": "main", "index": 0}]
+      ]
+    },
+    "Check Cap + Window": {
+      "main": [
+        [{"node": "Proceed?", "type": "main", "index": 0}]
+      ]
+    },
+    "Proceed?": {
+      "main": [
+        [{"node": "Get Next LinkedIn Job", "type": "main", "index": 0}]
+      ]
+    },
+    "Get Next LinkedIn Job": {
+      "main": [
+        [{"node": "Any Jobs?", "type": "main", "index": 0}]
+      ]
+    },
+    "Any Jobs?": {
+      "main": [
+        [{"node": "Random Wait", "type": "main", "index": 0}]
+      ]
+    },
+    "Random Wait": {
+      "main": [
+        [{"node": "Apply LinkedIn Easy Apply", "type": "main", "index": 0}]
+      ]
+    },
+    "Apply LinkedIn Easy Apply": {
+      "main": [
+        [{"node": "Telegram Success", "type": "main", "index": 0}],
+        [{"node": "Challenge Alert", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "linkedin-easy-apply-v1",
+  "meta": {
+    "instanceId": ""
+  },
+  "id": "linkedin-easy-apply-01",
+  "tags": []
+}
