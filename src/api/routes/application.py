@@ -4,7 +4,6 @@ import json
 from datetime import datetime
 from typing import Annotated
 
-import anthropic
 import structlog
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
@@ -19,6 +18,7 @@ from src.api.schemas import (
     WriteApplicationIn,
 )
 from src.audit_log import AuditEvent, write_audit
+from src.preparation.screening import generate_screening_answers
 from src.queue.models import Application, Job, JobStatus
 
 log = structlog.get_logger()
@@ -27,15 +27,16 @@ router = APIRouter()
 
 
 @router.post("/generate-screening-answers", response_model=GenerateScreeningAnswersOut)
-async def generate_screening_answers(
+async def generate_screening_answers_route(
     payload: GenerateScreeningAnswersIn,
     request: Request,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> GenerateScreeningAnswersOut | JSONResponse:
     """Generate answers to screening questions using Claude Haiku (AI-03 per D-20).
 
-    Builds a prompt from the job context + profile + screening questions, calls Haiku,
-    parses the JSON response, and stores the answers on the Job record.
+    Delegates to the shared ``generate_screening_answers`` function in
+    ``src.preparation.screening`` so the browser module can call the same logic
+    directly without a self-referential HTTP round-trip.
 
     Args:
         payload: GenerateScreeningAnswersIn with job_id, screening_questions, job_description,
@@ -57,75 +58,22 @@ async def generate_screening_answers(
         if job is None:
             return JSONResponse(status_code=404, content={"detail": "job_not_found"})
 
-        # If no screening questions, return empty answers without calling Anthropic
-        if not payload.screening_questions:
-            log.info("screening_answers_empty", job_id=payload.job_id)
-            return GenerateScreeningAnswersOut(job_id=payload.job_id, answers=[])
-
-        # Build prompt using profile + job context
         profile_config = getattr(request.app.state, "profile_config", None)
-        profile_context = ""
-        if profile_config is not None:
-            skills_list = ", ".join(profile_config.skills[:6])
-            projects_text = "\n".join(
-                f"  - {p.name}: {p.impact}" for p in profile_config.key_projects
-            )
-            profile_context = (
-                f"\nApplicant Profile:\n"
-                f"Summary: {profile_config.summary}\n"
-                f"Skills: {skills_list}\n"
-                f"Key Projects:\n{projects_text}\n"
-            )
-
-        questions_text = "\n".join(
-            f"{i + 1}. {q}" for i, q in enumerate(payload.screening_questions)
-        )
-
-        prompt = (
-            f"You are helping a job applicant answer screening questions professionally.\n"
-            f"{profile_context}\n"
-            f"Job Title: {payload.job_title}\n"
-            f"Job Description:\n{payload.job_description[:1500]}\n\n"
-            f"Screening Questions:\n{questions_text}\n\n"
-            f"Instructions: Answer each question concisely and professionally from the applicant's "
-            f"perspective, using their profile data above. Return a JSON object with an 'answers' "
-            f"array where each element has 'question' (the original question text) and 'answer' "
-            f"(the generated response). Return ONLY the JSON object, no other text."
-        )
 
         try:
-            client = anthropic.Anthropic()
-            message = client.messages.create(
-                model="claude-haiku-3-5",
-                max_tokens=1024,
-                messages=[{"role": "user", "content": prompt}],
+            answers_list = generate_screening_answers(
+                profile_config=profile_config,
+                job_title=payload.job_title,
+                job_description=payload.job_description,
+                questions=payload.screening_questions,
             )
-            response_text = message.content[0].text.strip()
-        except Exception as exc:
-            log.error("anthropic_api_failure", error=str(exc), job_id=payload.job_id)
-            return JSONResponse(status_code=503, content={"detail": "anthropic_api_unavailable"})
-
-        # Parse JSON response
-        try:
-            parsed = json.loads(response_text)
-            answers_list = parsed.get("answers", [])
-        except json.JSONDecodeError:
-            # If JSON parsing fails, try to extract from markdown code block
-            import re
-
-            match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", response_text, re.DOTALL)
-            if match:
-                parsed = json.loads(match.group(1))
-                answers_list = parsed.get("answers", [])
-            else:
-                log.warning(
-                    "screening_answers_parse_error",
-                    job_id=payload.job_id,
-                    response=response_text[:200],
+        except RuntimeError as exc:
+            if str(exc) == "anthropic_api_unavailable":
+                log.error("anthropic_api_failure", job_id=payload.job_id)
+                return JSONResponse(
+                    status_code=503, content={"detail": "anthropic_api_unavailable"}
                 )
-                answers_list = [
-                    {"question": q, "answer": response_text} for q in payload.screening_questions
-                ]
+            raise
 
         # Store answers on the Job record
         job.screening_answers = json.dumps(answers_list)
