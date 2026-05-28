@@ -1,50 +1,50 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-27T18:10:58.692Z",
-  "phase": "02",
-  "phase_name": "ingest-generate-and-email-apply",
-  "phase_dir": ".planning/phases/02-ingest-generate-and-email-apply",
-  "plan": 5,
-  "task": 0,
+  "timestamp": "2026-05-29T00:00:00Z",
+  "phase": "03",
+  "phase_name": "linkedin-easy-apply",
+  "phase_dir": ".planning/phases/03-linkedin-easy-apply",
+  "plan": 4,
+  "task": 3,
   "total_tasks": 3,
   "status": "paused",
   "completed_tasks": [
-    {"id": "02-01", "name": "FastAPI service foundation", "status": "done", "commit": "2ccd069"},
-    {"id": "02-02-tasks", "name": "Gmail ingestion code (Tasks 1+2)", "status": "done", "commit": "0e3ee83"},
-    {"id": "02-03-tasks", "name": "Scraper vertical slice code (Tasks 1+2)", "status": "done", "commit": "a57b6d4"},
-    {"id": "02-04", "name": "AI prep + application lifecycle", "status": "done", "commit": "2db87c8"}
+    {"id": "03-01", "name": "LinkedIn Easy Apply Foundation (camoufox dep, Docker, SKIPPED state, test scaffolds)", "status": "done", "commit": "5096a86"},
+    {"id": "03-02", "name": "LinkedInApplier browser module + screening shared function", "status": "done", "commit": "4c3f701"},
+    {"id": "03-03", "name": "FastAPI /apply endpoints (linkedin-easy-apply, daily-count, queued-jobs)", "status": "done", "commit": "d31bd7d"},
+    {"id": "03-04-t1", "name": "gmail-ingest apply_type detection (D-02) + linkedin_session_save.py", "status": "done", "commit": "d8d5661"},
+    {"id": "03-04-t2", "name": "linkedin-easy-apply n8n workflow (daily-cap, randomized timing, Telegram routing)", "status": "done", "commit": "c03eb77"},
+    {"id": "03-04-t3", "name": "Human checkpoint: session save, fingerprint, live apply, n8n import", "status": "in_progress", "progress": "Awaiting user to run session save, verify fingerprint, fire one live apply, import n8n workflow"}
   ],
   "remaining_tasks": [
-    {"id": "02-02-checkpoint", "name": "Gmail OAuth human verification", "status": "awaiting_human"},
-    {"id": "02-03-checkpoint", "name": "Kalibrr CSS selector verification", "status": "awaiting_human"},
-    {"id": "02-05", "name": "n8n workflow JSONs + README (Wave 3)", "status": "not_started"}
+    {"id": "03-04-t3-complete", "name": "Mark Task 3 complete after user approves human checkpoint", "status": "not_started"},
+    {"id": "code-review", "name": "gsd-code-review phase 03", "status": "not_started"},
+    {"id": "phase-verify", "name": "gsd-verifier: phase 03 goal verification + VERIFICATION.md", "status": "not_started"},
+    {"id": "phase-complete", "name": "phase.complete: mark phase 03 done in ROADMAP + STATE", "status": "not_started"}
   ],
-  "blockers": [],
-  "human_actions_pending": [
+  "blockers": [
     {
-      "action": "Gmail OAuth setup: create GCP project, enable Gmail API, create OAuth 2.0 Client ID (Desktop), download credentials JSON, run scripts/gmail_oauth.py, verify /gmail/poll-gmail returns history_id",
-      "context": "Plan 02-02 code is complete and merged. /poll-gmail and /fetch-email-body endpoints exist. OAuth token must be acquired before live testing.",
-      "blocking": true,
-      "plan": "02-02"
-    },
-    {
-      "action": "Kalibrr selector verification: start server, curl POST /scrape/scrape-kalibrr with search_term=Product Manager, verify count>0. If count==0, inspect live HTML at kalibrr.com/job-board/te/Product%20Manager/1 and report CSS selector structure.",
-      "context": "Plan 02-03 code is complete and merged. Kalibrr scraper uses 3-strategy CSS selector fallback but selectors are unverified against live HTML (RESEARCH.md Open Question 1).",
-      "blocking": true,
-      "plan": "02-03"
-    },
-    {
-      "action": "After both checkpoints approved, execute Wave 3: /gsd-execute-phase (picks up from 02-05)",
-      "context": "Plan 02-05 creates 6 n8n workflow JSON files + README. Requires all Wave 2 plans complete. Has its own blocking checkpoint (full Docker Compose + n8n import verification).",
-      "blocking": false,
-      "plan": "02-05"
+      "description": "Plan 03-04 Task 3 is a blocking human checkpoint — requires live LinkedIn session, bot fingerprint test, real Easy Apply submission, and n8n workflow import",
+      "type": "human_action",
+      "workaround": "None — must be done manually by Stefano"
     }
   ],
-  "decisions": [
-    {"decision": "API key auth added to FastAPI (X-API-Key header)", "rationale": "T-02-01 threat mitigation implemented by executor", "phase": "02"},
-    {"decision": "n8n routes prefixed: /gmail/, /scrape/, /resume/, /application/, /profile/", "rationale": "Executor used APIRouter prefix to avoid conflicts", "phase": "02"}
+  "human_actions_pending": [
+    {"action": "Run `LINKEDIN_PROFILE_DIR=data/linkedin_profile uv run python scripts/linkedin_session_save.py` — log in manually in the browser window, press Enter, confirm data/linkedin_profile/ populated", "context": "Camoufox needs a persistent session before it can apply autonomously", "blocking": true},
+    {"action": "Navigate to https://bot.sannysoft.com with the saved session — confirm no red/failed rows", "context": "Fingerprint validation gate before any live LinkedIn automation", "blocking": true},
+    {"action": "Open a LinkedIn job with Easy Apply — confirm XPath `//button[contains(@class, 'jobs-apply-button')]` resolves (MEDIUM confidence — may have drifted)", "context": "Selector validation; if drifted, report `failed: [description]` and the selector will be corrected", "blocking": true},
+    {"action": "Trigger `POST /apply/linkedin-easy-apply` against one QUEUED linkedin job — confirm {status: submitted}, Telegram notification arrives", "context": "Live pipeline validation", "blocking": true},
+    {"action": "Import n8n/workflows/linkedin-easy-apply.json into n8n UI — verify fastApiKey + telegramBot credentials resolve — leave active=false", "context": "Workflow ready for autonomous runs but not yet activated", "blocking": false}
   ],
-  "uncommitted_files": [],
-  "next_action": "Perform both human checkpoint verifications (Gmail OAuth + Kalibrr selector check), then resume with /gsd-execute-phase to run Wave 3 (plan 02-05)",
-  "context_notes": "Waves 1 and 2 executed successfully. All code is merged to main. 02-02 and 02-03 are code-complete but need human sign-off before Wave 3 can start. 02-04 and 02-01 are fully done. Route prefixes were added by executors — n8n workflows in plan 02-05 must use the prefixed URLs (/gmail/poll-gmail, /scrape/scrape-jobspy, etc.) not the un-prefixed versions in the plan file."
+  "decisions": [
+    {"decision": "resolve_apply_type placed in src/ingestion/gmail_client.py", "rationale": "Matches test file's candidate import list (tried in order)", "phase": "03"},
+    {"decision": "Telegram success node uses cross-node reference to GET queued-jobs", "rationale": "POST /apply response only returns {status, job_id} — company/title/url from earlier node", "phase": "03"},
+    {"decision": "storage_state JSON export wrapped in try/except (non-fatal)", "rationale": "__Host- cookie serialization issues documented in RESEARCH.md Pitfall 5", "phase": "03"}
+  ],
+  "uncommitted_files": [
+    "n8n/workflows/jobspy-scrape.json (modified — pre-existing, not related to phase 03)",
+    "n8n/workflows/kalibrr-scrape.json (modified — pre-existing, not related to phase 03)"
+  ],
+  "next_action": "User types 'approved' after completing human checkpoint steps → spawn continuation executor to mark 03-04 Task 3 complete → run code review → run phase verifier → mark phase 03 complete",
+  "context_notes": "Phase 03 is functionally complete — all code is built and tested. The only remaining step is the human checkpoint (real browser session + live apply + n8n import). Once approved, the phase can be formally closed via code review + verifier."
 }
