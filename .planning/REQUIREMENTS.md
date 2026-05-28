@@ -26,7 +26,7 @@
 
 ### Application Submission
 
-- [ ] **APPLY-01**: System submits applications via LinkedIn Easy Apply (max 15-20/day with randomized timing to avoid detection)
+- [x] **APPLY-01**: System submits applications via LinkedIn Easy Apply (max 15-20/day with randomized timing to avoid detection)
 - [ ] **APPLY-02**: System submits applications via email (resume + AI cover letter as attachment)
 - [ ] **APPLY-03**: System submits applications via Kalibrr's native apply flow using browser automation
 - [ ] **APPLY-04**: System fills and submits generic web application forms using browser automation
@@ -93,7 +93,7 @@
 | AI-01 | Phase 2 | Pending |
 | AI-02 | Phase 2 | Pending |
 | AI-03 | Phase 2 | Pending |
-| APPLY-01 | Phase 3 | Pending |
+| APPLY-01 | Phase 3 | Complete |
 | APPLY-02 | Phase 2 | Pending |
 | APPLY-03 | Phase 4 | Pending |
 | APPLY-04 | Phase 4 | Pending |

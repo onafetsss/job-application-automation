@@ -96,7 +96,7 @@ Cross-cutting constraints:
 - [x] 03-02-PLAN.md — LinkedInApplier browser module: Camoufox session, challenge detection, modal navigation, field fill; screening logic extracted to shared function
 
 **Wave 3** *(blocked on Wave 2)*
-- [ ] 03-03-PLAN.md — FastAPI /apply router: POST linkedin-easy-apply, GET daily-linkedin-count, GET queued-linkedin-jobs; schemas + registration
+- [x] 03-03-PLAN.md — FastAPI /apply router: POST linkedin-easy-apply, GET daily-linkedin-count, GET queued-linkedin-jobs; schemas + registration
 
 **Wave 4** *(blocked on Wave 3)*
 - [ ] 03-04-PLAN.md — n8n linkedin-easy-apply workflow (daily cap, randomized timing, Telegram routing), gmail-ingest apply_type fix (D-02), session save script, live fingerprint + apply checkpoint
@@ -122,5 +122,5 @@ Cross-cutting constraints:
 |-------|----------------|--------|-----------|
 | 1. Foundation | 5/5 | Complete   | 2026-05-27 |
 | 2. Ingest, Generate, and Email Apply | 4/5 | In Progress|  |
-| 3. LinkedIn Easy Apply | 2/4 | In Progress | - |
+| 3. LinkedIn Easy Apply | 3/4 | In Progress|  |
 | 4. Dashboard CRM and Additional Sources | 0/TBD | Not started | - |
