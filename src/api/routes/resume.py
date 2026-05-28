@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import anthropic
+import os
 import structlog
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -65,7 +66,7 @@ async def select_resume(
     )
 
     try:
-        client = anthropic.Anthropic()
+        client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
         message = client.messages.create(
             model="claude-haiku-3-5",
             max_tokens=256,
