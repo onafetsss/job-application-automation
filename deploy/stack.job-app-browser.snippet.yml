@@ -1,0 +1,43 @@
+# Reference: the job-app-api service block for /opt/stack/docker-compose.yml
+# Apply by REPLACING the existing `job-app-api:` service in /opt/stack/docker-compose.yml
+# with this block. Diff against the current block before saving. n8n/postgres/caddy/
+# browserless services are UNCHANGED.
+#
+# Changes vs the May-28 version:
+#   - build.dockerfile: Dockerfile.api -> docker/Dockerfile.browser (single container: API + Camoufox + Xvfb + x11vnc + noVNC)
+#   - build.args.VNC_PASSWD passed from .env (x11vnc password baked at build; see docker/Dockerfile.browser)
+#   - shm_size: "1gb" (Firefox needs shared memory or it crashes)
+#   - new env: CAMOUFOX_DISPLAY_MODE=xvfb, DISPLAY=:1, NOVNC_URL, LINKEDIN_PROFILE_DIR
+#   - everything else (SQLite DB_PATH, binds, network, restart) UNCHANGED
+#
+# No host ports are published — Caddy reaches port 6080 (noVNC) and 8000 (API) over the
+# internal n8n-net network. Port 6080 is exposed in the image, fronted by Caddy basic_auth.
+
+  job-app-api:
+    build:
+      context: /opt/job-app
+      dockerfile: docker/Dockerfile.browser
+      args:
+        VNC_PASSWD: ${VNC_PASSWD}
+    restart: unless-stopped
+    shm_size: "1gb"
+    environment:
+      DB_PATH: /data/jobs.db
+      ELIGIBILITY_CONFIG_PATH: /app/config/eligibility.yaml
+      PROFILE_CONFIG_PATH: /app/config/profile.yaml
+      GOOGLE_TOKEN_PATH: /app/.google_token.json
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      RESUMES_DIR: /app/resumes
+      API_KEY: ${JOB_APP_API_KEY}
+      # --- VPS display stack (phase 05) ---
+      CAMOUFOX_DISPLAY_MODE: xvfb
+      DISPLAY: ":1"
+      NOVNC_URL: https://recaptcha.runlucid.co
+      LINKEDIN_PROFILE_DIR: /data/linkedin_profile
+    volumes:
+      - /opt/job-app/data:/data
+      - /opt/job-app/config:/app/config
+      - /opt/job-app/resumes:/app/resumes
+      - /opt/job-app/.google_token.json:/app/.google_token.json
+    networks:
+      - n8n-net

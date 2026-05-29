@@ -1,0 +1,21 @@
+# Reference: append this block to /opt/stack/Caddyfile (do NOT touch the existing n8n block).
+# Serves the live Camoufox browser over HTTPS for remote reCAPTCHA solving, gated by basic_auth.
+#
+# {$DOMAIN_NAME} is already in Caddy's env (set in the caddy service). Add two new vars to
+# /opt/stack/.env:
+#   NOVNC_USER=stefano
+#   NOVNC_PASSWORD_HASH=<bcrypt hash>
+# Generate the hash on the VPS:
+#   docker exec stack-caddy-1 caddy hash-password --plaintext 'YOUR_STRONG_PASSWORD'
+# Caddy auto-provisions a Let's Encrypt cert for recaptcha.runlucid.co once the DNS A record resolves.
+
+recaptcha.{$DOMAIN_NAME} {
+    encode zstd gzip
+
+    basic_auth {
+        {$NOVNC_USER} {$NOVNC_PASSWORD_HASH}
+    }
+
+    # noVNC websockify needs websocket upgrade; reverse_proxy handles it automatically.
+    reverse_proxy job-app-api:6080
+}
