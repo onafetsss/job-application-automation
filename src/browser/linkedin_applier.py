@@ -613,6 +613,13 @@ class LinkedInApplier:
                                          # matches the VPS IP's region (e.g. Malay) and LinkedIn
                                          # renders non-English, breaking selector matching.
         ) as context:
+            # Force LinkedIn's UI language to English. The VPS IP geolocates to a
+            # Malay region, so LinkedIn otherwise renders Malay ("Permohonan Mudah"),
+            # which breaks the English-label selectors + modal navigation. Setting the
+            # `lang` cookie is LinkedIn's own language mechanism and overrides geo/IP.
+            await context.add_cookies([
+                {"name": "lang", "value": "v=2&lang=en-US", "domain": ".linkedin.com", "path": "/"},
+            ])
             page = await context.new_page()
             job_url = getattr(job, "url", "")
             await page.goto(job_url)
