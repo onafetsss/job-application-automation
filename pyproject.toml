@@ -24,6 +24,7 @@ dependencies = [
     "httpx>=0.25",
     "beautifulsoup4>=4.12",
     "camoufox>=0.4.11",
+    "playwright==1.58.0",
 ]
 
 [tool.ruff]
