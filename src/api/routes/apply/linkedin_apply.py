@@ -26,8 +26,10 @@ from src.browser.linkedin_applier import (
     ChallengeDetected,
     LinkedInApplier,
     NoEasyApplyButton,
+    RecaptchaDetected,
     UnknownFormField,
 )
+from src.notify import send_telegram
 from src.queue.models import Application, Job, JobStatus
 
 log = structlog.get_logger()
@@ -76,6 +78,8 @@ async def queued_linkedin_jobs(
         dict: {"jobs": [{"id", "title", "company", "url"}, ...]}
     """
     async with session.begin():
+        # Filters on status == QUEUED, so NEEDS_HUMAN jobs (a distinct status) are
+        # already excluded — they are never retried autonomously (T-03-05-03).
         result = await session.execute(
             select(Job).where(
                 Job.status == JobStatus.QUEUED,
@@ -185,6 +189,36 @@ async def linkedin_easy_apply(
         raise HTTPException(
             status_code=503,
             detail={"status": "challenge_detected", "detail": str(exc)},
+        )
+
+    except RecaptchaDetected:
+        # reCAPTCHA Enterprise — pause the job for human resolution (NEEDS_HUMAN),
+        # audit the transition, fire a best-effort Telegram alert, and return 200
+        # paused_human. The job is NOT re-queued automatically (T-03-05-03).
+        reason = "recaptcha_enterprise"
+        async with session.begin():
+            result_rc = await session.execute(select(Job).where(Job.id == payload.job_id))
+            job_rc = result_rc.scalar_one_or_none()
+            if job_rc is not None:
+                job_rc.status = JobStatus.NEEDS_HUMAN
+                job_rc.rejection_reason = reason
+                job_rc.updated_at = datetime.utcnow()
+                await write_audit(
+                    session,
+                    source="api",
+                    event=AuditEvent.NEEDS_HUMAN,
+                    job_id=payload.job_id,
+                    reason=reason,
+                )
+        # Best-effort alert AFTER the DB commit (send_telegram never raises).
+        await send_telegram(
+            f"LinkedIn reCAPTCHA detected for job {payload.job_id} — job paused. "
+            f"Resolve manually, then requeue the job."
+        )
+        log.info("linkedin_paused_human", job_id=payload.job_id, reason=reason)
+        return JSONResponse(
+            status_code=200,
+            content={"status": "paused_human", "job_id": payload.job_id},
         )
 
     except NoEasyApplyButton:

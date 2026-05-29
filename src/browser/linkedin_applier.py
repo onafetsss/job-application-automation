@@ -76,8 +76,13 @@ def detect_recaptcha(page: Any) -> bool:
 CHALLENGE_URL_PATTERNS = ["/checkpoint/", "/authwall/"]
 LOGIN_URL_PATTERNS = ["/login", "/uas/login", "/signin"]
 
-# Easy Apply button selector (RESEARCH.md Pattern 3, MEDIUM confidence — prefer ARIA/XPath)
-EASY_APPLY_BTN_XPATH = '//button[contains(@class, "jobs-apply-button")]'
+# Easy Apply trigger selectors (03-SDUI-FINDINGS.md §1 — class selectors are dead).
+# Locate by visible text first, then by aria-label (case-insensitive) — never by class/href.
+EASY_APPLY_TEXT_SELECTOR = "text=Easy Apply"
+EASY_APPLY_ARIA_SELECTOR = "[aria-label*='Easy Apply' i]"
+
+# Confirmed-open modal selector — wait for this before declaring the trigger click a success.
+MODAL_SELECTOR = "div[data-test-modal], div[role='dialog']"
 
 # Field label → profile key mapping (case-insensitive substring match)
 _LABEL_TO_PROFILE_KEY: list[tuple[str, str]] = [
@@ -223,7 +228,7 @@ def resolve_profile_field(
 
 
 async def fill_form_fields(
-    page: Any,
+    frame: Any,
     profile: dict,
     screening_answers: list[dict],
     resume_path: str | None = None,
@@ -234,7 +239,10 @@ async def fill_form_fields(
     dropdowns. Unknown text input labels raise ``UnknownFormField`` (D-11).
 
     Args:
-        page: Playwright/Camoufox page object.
+        frame: Playwright/Camoufox frame (or page) that owns the modal content.
+            All locator calls are issued against this frame, not the top-level
+            page — the live modal renders inside a resolved frame/overlay
+            (03-SDUI-FINDINGS.md §2).
         profile: Profile dict (full_name, email, phone, linkedin_url, etc.).
         screening_answers: List of ``{question, answer}`` dicts.
         resume_path: Absolute path to the resume file for file upload inputs.
@@ -242,7 +250,7 @@ async def fill_form_fields(
     """
     # --- Resume file upload (T-03-04: path resolved from env, never logged) ---
     if resume_path and os.path.isfile(resume_path):
-        file_inputs = page.locator("input[type='file']")
+        file_inputs = frame.locator("input[type='file']")
         for i in range(await file_inputs.count()):
             fi = file_inputs.nth(i)
             if await fi.is_visible():
@@ -261,7 +269,7 @@ async def fill_form_fields(
     phone_value = profile.get("phone", "")
     if phone_value:
         for sel in phone_selectors:
-            el = page.locator(sel).first
+            el = frame.locator(sel).first
             try:
                 if await el.is_visible():
                     await el.fill(phone_value)
@@ -270,17 +278,17 @@ async def fill_form_fields(
                 continue
 
     # --- Text inputs (name, email, years of experience, LinkedIn URL, etc.) ---
-    text_inputs = page.locator(".artdeco-text-input--input")
+    text_inputs = frame.locator(".artdeco-text-input--input")
     for i in range(await text_inputs.count()):
         el = text_inputs.nth(i)
-        label = await get_label_for(page, el)
+        label = await get_label_for(frame, el)
         # resolve_profile_field raises UnknownFormField if no match (D-11)
         value = resolve_profile_field(label, profile, screening_answers)
         if await el.is_enabled():
             await el.fill(value)
 
     # --- Radio buttons (work authorization yes/no, boolean questions) ---
-    radio_groups = page.locator("fieldset, div[role='radiogroup']")
+    radio_groups = frame.locator("fieldset, div[role='radiogroup']")
     for i in range(await radio_groups.count()):
         group = radio_groups.nth(i)
         try:
@@ -300,10 +308,10 @@ async def fill_form_fields(
             continue
 
     # --- Dropdowns ---
-    selects = page.locator("select")
+    selects = frame.locator("select")
     for i in range(await selects.count()):
         sel_el = selects.nth(i)
-        label = await get_label_for(page, sel_el)
+        label = await get_label_for(frame, sel_el)
         try:
             value = resolve_profile_field(label, profile, screening_answers)
             if value is not None:
@@ -367,21 +375,75 @@ class LinkedInApplier:
         self.user_data_dir = user_data_dir
 
     async def _find_and_click_easy_apply(self, page: Any) -> None:
-        """Locate the Easy Apply button and click it, or raise NoEasyApplyButton.
+        """Locate the Easy Apply trigger by text/aria, click it, and confirm the modal opens.
+
+        Tries the visible-text selector first, then the aria-label selector. The
+        first visible match is clicked; the method then waits for a confirmed modal
+        selector to appear, retrying the click once on timeout before giving up.
 
         Args:
             page: Playwright/Camoufox page object already navigated to the job URL.
 
         Raises:
-            NoEasyApplyButton: When no Easy Apply button is found (expected for
-                non-Easy-Apply jobs — D-01).
+            NoEasyApplyButton: When neither selector matches a visible element
+                (expected for non-Easy-Apply jobs — D-01).
+            ModalNavigationError: When the trigger is clicked but the modal never
+                opens within the timeout (after one retry).
         """
-        locator = page.locator(EASY_APPLY_BTN_XPATH)
-        count = await locator.count()
-        if count == 0:
-            raise NoEasyApplyButton("Easy Apply button not found")
-        await locator.first.click()
-        log.info("li_easy_apply_clicked")
+        for selector in (EASY_APPLY_TEXT_SELECTOR, EASY_APPLY_ARIA_SELECTOR):
+            locator = page.locator(selector)
+            if await locator.count() > 0:
+                first = locator.first
+                if await first.is_visible():
+                    await first.click()
+                    log.info("li_easy_apply_clicked", selector=selector)
+                    # Wait for the modal to confirm-open; retry the trigger click once.
+                    for attempt in range(2):
+                        try:
+                            await page.wait_for_selector(MODAL_SELECTOR, timeout=8000)
+                            return  # Modal confirmed open.
+                        except Exception:
+                            if attempt == 0:
+                                log.warning("li_modal_open_retry", selector=selector)
+                                await first.click()  # retry the trigger click
+                            else:
+                                raise ModalNavigationError("modal_open_timeout")
+        raise NoEasyApplyButton(
+            "Easy Apply trigger not found — neither text nor aria matched"
+        )
+
+    async def _resolve_modal_frame(self, page: Any) -> Any:
+        """Locate the frame that owns the Easy Apply modal content, or return the page.
+
+        Probes ``page.frames`` for a LinkedIn frame that exposes the modal's
+        "Continue to next step" control or a "Contact"-titled step. If none
+        qualifies, returns ``page`` itself.
+
+        Per 03-SDUI-FINDINGS.md §2, ``return page`` is the EXPECTED outcome for the
+        current live structure: the modal is an overlay div in the MAIN document,
+        not a separate iframe. The frame probe is defensive in case LinkedIn moves
+        the modal into a dedicated iframe later. "No frame resolved" is the normal
+        path, not an error.
+
+        Args:
+            page: Playwright/Camoufox page object with the modal open.
+
+        Returns:
+            The resolved modal frame, or ``page`` when the modal is an overlay.
+        """
+        for frame in page.frames:
+            if "linkedin.com" not in frame.url.lower():
+                continue
+            try:
+                count = await frame.locator("[aria-label='Continue to next step']").count()
+                if count > 0:
+                    return frame
+                title = await frame.title()
+                if "contact" in title.lower():
+                    return frame
+            except Exception:
+                continue
+        return page  # overlay pattern — modal lives in the main document
 
     async def _navigate_modal(
         self,
@@ -393,32 +455,49 @@ class LinkedInApplier:
         """Loop through Easy Apply modal pages: fill fields, click Next/Review/Submit.
 
         Bounded loop — raises ``ModalNavigationError`` if no navigation button is
-        found (T-03-03: no infinite loop).
+        found (T-03-03: no infinite loop). reCAPTCHA Enterprise is re-checked at the
+        TOP OF EVERY iteration against the top-level page (challenges can appear
+        mid-flow on a later step, not just at modal open — 03-SDUI-FINDINGS.md §4);
+        on detection ``RecaptchaDetected`` is raised before any fill/click on that
+        step so the job pauses instead of being bot-scored into rejection.
 
         Args:
-            page: Playwright/Camoufox page object with the modal open.
+            page: Playwright/Camoufox page object with the modal open. reCAPTCHA
+                detection always runs against this top-level page.
             profile: Profile dict for field filling.
             screening_answers: Screening answers for field filling.
             resume_path: Resume file path for file upload inputs.
 
         Raises:
+            RecaptchaDetected: When a reCAPTCHA Enterprise frame is present at the
+                start of any iteration — caller pauses the job (NEEDS_HUMAN).
             ModalNavigationError: When no Submit/Review/Next button is visible.
             UnknownFormField: Propagated from ``fill_form_fields`` when an
                 unresolvable text input is encountered (D-11).
         """
+        # Resolve the frame/overlay that owns the modal content; drive locators on it.
+        frame = await self._resolve_modal_frame(page)
+
         MAX_PAGES = 20  # Hard cap — LinkedIn Easy Apply never exceeds ~10 pages
         for _ in range(MAX_PAGES):
-            await fill_form_fields(page, profile, screening_answers, resume_path)
+            # FIRST statement of every iteration: re-check reCAPTCHA on the TOP-LEVEL
+            # page. A single pre-loop check would let a mid-flow challenge slip
+            # through and submit, so this must run before each step's fill.
+            if detect_recaptcha(page):
+                log.warning("li_recaptcha_detected")
+                raise RecaptchaDetected("recaptcha_enterprise")
 
-            submit_btn = page.locator("button[aria-label='Submit application']")
-            review_btn = page.locator("button[aria-label='Review your application']")
-            next_btn = page.locator("button[aria-label='Continue to next step']")
+            await fill_form_fields(frame, profile, screening_answers, resume_path)
+
+            submit_btn = frame.locator("button[aria-label='Submit application']")
+            review_btn = frame.locator("button[aria-label='Review your application']")
+            next_btn = frame.locator("button[aria-label='Continue to next step']")
 
             if await submit_btn.is_visible():
                 # Optionally uncheck "follow company" before submit
-                follow_cb = page.locator("label[for='follow-company-checkbox']")
+                follow_cb = frame.locator("label[for='follow-company-checkbox']")
                 if await follow_cb.is_visible():
-                    checkbox = page.locator("#follow-company-checkbox")
+                    checkbox = frame.locator("#follow-company-checkbox")
                     if await checkbox.count() > 0 and await checkbox.is_checked():
                         await follow_cb.click()
                 await submit_btn.click()
@@ -525,17 +604,13 @@ class LinkedInApplier:
                 log.error("li_challenge_detected", challenge=challenge, job_id=getattr(job, "id", None))
                 raise ChallengeDetected(challenge)
 
-            # Locate and click Easy Apply button (raises NoEasyApplyButton if absent — D-01)
+            # Locate and click Easy Apply trigger; this confirms the modal opens
+            # via MODAL_SELECTOR (raises NoEasyApplyButton if absent — D-01,
+            # ModalNavigationError if the trigger clicks but the modal never opens).
             await self._find_and_click_easy_apply(page)
 
-            # Wait for Easy Apply modal to appear
-            try:
-                await page.wait_for_selector("div.jobs-easy-apply-modal", timeout=10000)
-            except Exception:
-                log.warning("li_modal_not_found", job_id=getattr(job, "id", None))
-                raise ModalNavigationError("Easy Apply modal did not appear within 10s")
-
-            # Navigate modal pages: fill fields, click Next/Review/Submit (T-03-03)
+            # Navigate modal pages: fill fields, click Next/Review/Submit (T-03-03).
+            # reCAPTCHA is re-checked at the top of every step inside _navigate_modal.
             await self._navigate_modal(page, profile, screening_answers, resume_path)
 
         log.info("li_apply_complete", job_id=getattr(job, "id", None))

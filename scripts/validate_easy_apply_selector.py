@@ -5,15 +5,15 @@ Usage:
         scripts/validate_easy_apply_selector.py "<linkedin-job-url>"
 
 Opens the job URL using the persisted LinkedIn session and reports how many
-elements match the EASY_APPLY_BTN_XPATH the applier relies on, plus the button
-text, so the MEDIUM-confidence selector can be confirmed (or flagged as drifted).
+elements match the EASY_APPLY_TEXT_SELECTOR the applier relies on, plus the button
+text, so the live-SDUI selector can be confirmed (or flagged as drifted).
 """
 
 import asyncio
 import os
 import sys
 
-from src.browser.linkedin_applier import EASY_APPLY_BTN_XPATH
+from src.browser.linkedin_applier import EASY_APPLY_TEXT_SELECTOR
 
 
 async def main() -> None:
@@ -26,7 +26,7 @@ async def main() -> None:
     url = sys.argv[1]
     profile_dir = os.environ.get("LINKEDIN_PROFILE_DIR", "data/linkedin_profile")
 
-    print(f"Selector under test: {EASY_APPLY_BTN_XPATH}")
+    print(f"Selector under test: {EASY_APPLY_TEXT_SELECTOR}")
     print(f"Job URL: {url}\n")
 
     async with AsyncCamoufox(
@@ -40,7 +40,7 @@ async def main() -> None:
 
         # LinkedIn renders the apply button lazily — wait for it explicitly.
         try:
-            await page.wait_for_selector(f"xpath={EASY_APPLY_BTN_XPATH}", timeout=20000)
+            await page.wait_for_selector(EASY_APPLY_TEXT_SELECTOR, timeout=20000)
         except Exception:
             print("(button did not appear within 20s — introspecting anyway)\n")
 
@@ -112,7 +112,7 @@ async def main() -> None:
                 print(f"    html={f['outerHTML']!r}")
         print()
 
-        locator = page.locator(EASY_APPLY_BTN_XPATH)
+        locator = page.locator(EASY_APPLY_TEXT_SELECTOR)
         count = await locator.count()
         print(f"Matched elements: {count}")
         if count > 0:
