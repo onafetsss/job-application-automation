@@ -1,0 +1,43 @@
+FROM python:3.11-slim
+WORKDIR /app
+
+# Python deps
+COPY pyproject.toml uv.lock ./
+RUN pip install uv && uv sync --no-dev
+
+# Display stack + supervisor (Debian stable apt packages — all in 'main', curated)
+# xvfb: virtual X framebuffer; x11vnc: exposes display over VNC; novnc+websockify: HTML5 VNC client;
+# fluxbox: window manager (modal focus); supervisor: multi-process container manager
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    xvfb \
+    x11vnc \
+    novnc \
+    websockify \
+    fluxbox \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+# Camoufox Firefox binary (~100MB — cached as its own layer)
+RUN python -m camoufox fetch
+
+# VNC password baked at build time (passed as --build-arg VNC_PASSWD=<secret>)
+# This avoids embedding the password in the image layer history as plaintext.
+ARG VNC_PASSWD
+RUN mkdir -p /root/.vnc && \
+    x11vnc -storepasswd "${VNC_PASSWD}" /root/.vnc/passwd && \
+    chmod 600 /root/.vnc/passwd
+
+# Application source
+COPY src/ src/
+COPY main.py .
+
+# Supervisor config (manages Xvfb, fluxbox, x11vnc, noVNC, uvicorn)
+COPY docker/supervisord.conf /etc/supervisor/conf.d/app.conf
+
+# Log dir for supervisor
+RUN mkdir -p /var/log/supervisor
+
+EXPOSE 8000
+EXPOSE 6080
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/supervisord.conf"]
