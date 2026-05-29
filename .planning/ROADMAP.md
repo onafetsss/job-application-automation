@@ -2,7 +2,7 @@
 
 ## Overview
 
-Four phases deliver the complete autonomous job application system. Phase 1 builds the data layer and filter logic that everything else depends on. Phase 2 adds all ingestion sources, AI generation, email submission, and notifications — producing the first real end-to-end run at zero LinkedIn account risk. Phase 3 adds LinkedIn Easy Apply with full anti-detection hardening. Phase 4 adds Kalibrr and generic form submissions plus the web dashboard CRM, completing the system.
+Five phases deliver the complete autonomous job application system. Phase 1 builds the data layer and filter logic that everything else depends on. Phase 2 adds all ingestion sources, AI generation, email submission, and notifications — producing the first real end-to-end run at zero LinkedIn account risk. Phase 3 adds LinkedIn Easy Apply with full anti-detection hardening. Phase 4 adds Kalibrr and generic form submissions plus the web dashboard CRM. Phase 5 deploys the full stack to an always-on VPS for true 24/7 operation (prioritized to run before Phase 4 so the system goes live sooner).
 
 ## Phases
 
@@ -10,6 +10,7 @@ Four phases deliver the complete autonomous job application system. Phase 1 buil
 - [ ] **Phase 2: Ingest, Generate, and Email Apply** - Gmail ingestion, JobSpy scraping, AI cover letter generation, email submission, notifications — first live end-to-end run with zero LinkedIn risk
 - [x] **Phase 3: LinkedIn Easy Apply** - Camoufox browser automation with anti-detection, challenge detection, conservative rate limiting *(DONE — live field-fill verification deferred to VPS phase; applies are human-in-the-loop on reCAPTCHA by design)*
 - [ ] **Phase 4: Dashboard CRM and Additional Sources** - Web CRM dashboard with Gmail history import, Kalibrr native apply, and generic form apply
+- [ ] **Phase 5: VPS Deployment (24/7)** - Containerize and deploy the full stack to the existing Hostinger VPS alongside its dockerized n8n; headless Camoufox on a virtual display + noVNC for remote reCAPTCHA solving via a Telegram link; secure session/secret transfer; scheduler for round-the-clock operation *(prioritized to run NEXT, before Phase 4)*
 
 ## Phase Details
 
@@ -119,6 +120,19 @@ Cross-cutting constraints:
 **UI hint**: yes
 **Plans**: TBD
 
+### Phase 5: VPS Deployment (24/7)
+**Goal**: The full agent stack runs round-the-clock on Stefano's existing Hostinger VPS — surviving reboots — so email/external-form applies run fully autonomous and LinkedIn Easy Apply runs with a remote-solvable reCAPTCHA pause, all without the laptop being open
+**Depends on**: Phase 3 (LinkedIn applier), Phase 2 (email/ingest pipeline)
+**Requirements**: DEPLOY-01, DEPLOY-02, DEPLOY-03, DEPLOY-04, DEPLOY-05
+**Success Criteria** (what must be TRUE):
+  1. The FastAPI agent, Camoufox browser, and APScheduler run as Docker services on the Hostinger VPS, added alongside the existing dockerized n8n WITHOUT disrupting current n8n automations (existing workflows still run)
+  2. The stack auto-restarts on VPS reboot (restart policy) and survives with no laptop connection — verified by rebooting the box and confirming the agent comes back up
+  3. Camoufox runs on a virtual display (Xvfb) inside the container; when the LinkedIn applier hits reCAPTCHA it transitions the job to NEEDS_HUMAN, sends a Telegram link, and that link opens the live browser via noVNC so Stefano can solve the challenge from a phone/laptop browser
+  4. The authenticated LinkedIn session (data/linkedin_profile) and all secrets (Gmail OAuth, Telegram, Anthropic) are transferred to the VPS securely and are NOT committed to git
+  5. An email/external-form apply completes end-to-end on the VPS with a SUBMITTED entry, with the laptop closed
+  6. Gmail push/poll ingestion works from the VPS (public HTTPS endpoint via the existing reverse proxy if push is used)
+**Plans**: TBD
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -127,3 +141,4 @@ Cross-cutting constraints:
 | 2. Ingest, Generate, and Email Apply | 4/5 | In Progress|  |
 | 3. LinkedIn Easy Apply | 5/5 | Complete (live field-fill deferred to VPS) | 2026-05-29 |
 | 4. Dashboard CRM and Additional Sources | 0/TBD | Not started | - |
+| 5. VPS Deployment (24/7) | 0/TBD | Planning (next up) | - |
