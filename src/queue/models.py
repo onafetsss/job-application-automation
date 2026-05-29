@@ -18,6 +18,7 @@ class JobStatus(str, Enum):
     SUBMITTED = "SUBMITTED"
     FAILED = "FAILED"
     SKIPPED = "SKIPPED"
+    NEEDS_HUMAN = "NEEDS_HUMAN"
 
 
 class Job(Base):

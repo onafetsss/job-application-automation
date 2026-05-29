@@ -22,6 +22,7 @@ class AuditEvent(StrEnum):
     SUBMITTED = "SUBMITTED"
     FAILED = "FAILED"
     SKIPPED = "SKIPPED"
+    NEEDS_HUMAN = "NEEDS_HUMAN"
     NOTIFIED = "NOTIFIED"
 
 

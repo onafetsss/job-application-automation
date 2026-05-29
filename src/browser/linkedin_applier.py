@@ -45,6 +45,30 @@ class ModalNavigationError(Exception):
     """Raised when no Next/Review/Submit button is found during modal navigation (T-03-03)."""
 
 
+class RecaptchaDetected(Exception):
+    """Raised when reCAPTCHA Enterprise is detected in the apply flow — caller must pause the job."""
+
+
+def detect_recaptcha(page: Any) -> bool:
+    """Return True when any frame in the page is a reCAPTCHA Enterprise frame.
+
+    Synchronous: ``page.frames`` is a property (not a coroutine) in Playwright.
+    Checks every frame's URL for both ``recaptcha`` and ``enterprise`` substrings —
+    the live signal (03-SDUI-FINDINGS.md §4) is a sibling frame loading
+    ``google.com/recaptcha/enterprise/...``.
+
+    Args:
+        page: Playwright/Camoufox page object (top-level).
+
+    Returns:
+        True if a reCAPTCHA Enterprise frame is present, else False.
+    """
+    return any(
+        "recaptcha" in f.url.lower() and "enterprise" in f.url.lower()
+        for f in getattr(page, "frames", [])
+    )
+
+
 # ---------------------------------------------------------------------------
 # URL/title patterns for challenge detection (RESEARCH.md Pattern 2)
 # ---------------------------------------------------------------------------
