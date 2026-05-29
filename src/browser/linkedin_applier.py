@@ -390,6 +390,15 @@ class LinkedInApplier:
             ModalNavigationError: When the trigger is clicked but the modal never
                 opens within the timeout (after one retry).
         """
+        # LinkedIn lazy-renders the Easy Apply button a few seconds after the job
+        # page loads. Wait for it before checking, or we falsely conclude it's
+        # absent. A genuine non-Easy-Apply job simply times out here and falls
+        # through to NoEasyApplyButton below (correct skip).
+        try:
+            await page.wait_for_selector(EASY_APPLY_TEXT_SELECTOR, timeout=20000)
+        except Exception:
+            pass
+
         for selector in (EASY_APPLY_TEXT_SELECTOR, EASY_APPLY_ARIA_SELECTOR):
             locator = page.locator(selector)
             if await locator.count() > 0:
