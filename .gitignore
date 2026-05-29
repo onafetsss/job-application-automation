@@ -10,3 +10,8 @@ browser_profiles/
 dist/
 .venv/
 n8n_storage/
+
+# Gmail OAuth credentials — never commit (Phase 05, Pitfall 4)
+.google_credentials.json
+.google_token.json
+*token*.json
