@@ -17,6 +17,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     supervisor \
     && rm -rf /var/lib/apt/lists/*
 
+# Firefox/Camoufox runtime system libraries (GTK3, X libs, audio, etc.).
+# Without these the browser fails to start: "libgtk-3.so.0: cannot open shared object file".
+# playwright's helper installs the exact, version-correct set for firefox.
+RUN uv run playwright install-deps firefox
+
 # Camoufox Firefox binary (~100MB — cached as its own layer)
 # Must run inside the uv-managed venv (camoufox is installed there, not in system python)
 RUN uv run python -m camoufox fetch
