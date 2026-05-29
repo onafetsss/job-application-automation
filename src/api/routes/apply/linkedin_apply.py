@@ -211,10 +211,22 @@ async def linkedin_easy_apply(
                     reason=reason,
                 )
         # Best-effort alert AFTER the DB commit (send_telegram never raises).
-        await send_telegram(
-            f"LinkedIn reCAPTCHA detected for job {payload.job_id} — job paused. "
-            f"Resolve manually, then requeue the job."
-        )
+        # On the VPS, NOVNC_URL points at the noVNC web client so Stefano can
+        # open the live browser session and solve the reCAPTCHA. Degrades
+        # gracefully to plain text when NOVNC_URL is unset (local dev).
+        novnc_url = os.environ.get("NOVNC_URL", "")
+        if novnc_url:
+            alert_msg = (
+                f"\U0001F6A8 reCAPTCHA on job <b>{payload.job_id}</b> — paused (NEEDS_HUMAN).\n"
+                f'Solve it here: <a href="{novnc_url}">{novnc_url}</a>\n'
+                f"After solving, requeue the job."
+            )
+        else:
+            alert_msg = (
+                f"LinkedIn reCAPTCHA detected for job {payload.job_id} — job paused. "
+                f"Resolve manually, then requeue the job."
+            )
+        await send_telegram(alert_msg)
         log.info("linkedin_paused_human", job_id=payload.job_id, reason=reason)
         return JSONResponse(
             status_code=200,

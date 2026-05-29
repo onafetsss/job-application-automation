@@ -11,7 +11,7 @@ Implements:
     LinkedInApplier         — class owning the Camoufox session lifecycle and apply() method
 
 Security: T-03-04 — logs job_id and event names only, never PII or resume bytes.
-         T-03-05 — headless="virtual" + humanize=True + persistent_context (not headless-true).
+         T-03-05 — headless gated by CAMOUFOX_DISPLAY_MODE env (False on VPS with DISPLAY=:1, 'virtual' locally) + humanize=True + persistent_context (not headless-true).
          T-03-03 — bounded modal loop; raises on no navigation button found (no infinite loop).
 """
 
@@ -587,8 +587,14 @@ class LinkedInApplier:
                 # Continue without screening answers — fields will raise UnknownFormField
                 # if they cannot be resolved from profile
 
+        # Env-gated headless mode (T-03-05): on the VPS, supervisord sets
+        # CAMOUFOX_DISPLAY_MODE=xvfb so Camoufox runs with a real window on
+        # DISPLAY=:1 (headless=False). Locally (unset), keep "virtual".
+        _display_mode = os.environ.get("CAMOUFOX_DISPLAY_MODE", "")
+        _headless: bool | str = False if _display_mode == "xvfb" else "virtual"
+
         async with AsyncCamoufox(
-            headless="virtual",           # Xvfb on Linux/Docker — not headless-true (T-03-05)
+            headless=_headless,           # xvfb→False on VPS, else "virtual" (T-03-05)
             persistent_context=True,
             user_data_dir=self.user_data_dir,
             humanize=True,               # Human-like mouse movement (anti-detection)
