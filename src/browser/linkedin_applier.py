@@ -608,6 +608,10 @@ class LinkedInApplier:
             user_data_dir=self.user_data_dir,
             humanize=True,               # Human-like mouse movement (anti-detection)
             os="windows",               # Spoof Windows OS fingerprint
+            locale="en-US",             # Force English UI — the agent's selectors + modal
+                                         # nav are English-label-based. Without this, Camoufox
+                                         # matches the VPS IP's region (e.g. Malay) and LinkedIn
+                                         # renders non-English, breaking selector matching.
         ) as context:
             page = await context.new_page()
             job_url = getattr(job, "url", "")
