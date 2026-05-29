@@ -8,7 +8,7 @@ Four phases deliver the complete autonomous job application system. Phase 1 buil
 
 - [~] **Phase 1: Foundation** - DB schema, eligibility filter, dry-run mode, deduplication — the contract every later component depends on
 - [ ] **Phase 2: Ingest, Generate, and Email Apply** - Gmail ingestion, JobSpy scraping, AI cover letter generation, email submission, notifications — first live end-to-end run with zero LinkedIn risk
-- [ ] **Phase 3: LinkedIn Easy Apply** - Camoufox browser automation with anti-detection, challenge detection, conservative rate limiting
+- [x] **Phase 3: LinkedIn Easy Apply** - Camoufox browser automation with anti-detection, challenge detection, conservative rate limiting *(DONE — live field-fill verification deferred to VPS phase; applies are human-in-the-loop on reCAPTCHA by design)*
 - [ ] **Phase 4: Dashboard CRM and Additional Sources** - Web CRM dashboard with Gmail history import, Kalibrr native apply, and generic form apply
 
 ## Phase Details
@@ -87,7 +87,7 @@ Cross-cutting constraints:
   2. The browser session passes a bot-detection fingerprinting test (bot.sannysoft.com or equivalent) before any live LinkedIn run begins
   3. When a CAPTCHA or "unusual activity" page is detected during a LinkedIn session, automation stops immediately and a Telegram alert fires (no silent hang, no crash)
   4. Daily LinkedIn submissions are capped at 15-20 with randomized timing; the system does not submit more than the cap even if more jobs are queued
-**Plans**: 4 plans
+**Plans**: 5 plans (1 SDUI-rework gap closure)
 
 **Wave 1**
 - [x] 03-01-PLAN.md — Foundation: camoufox dependency + Docker xvfb/fetch, JobStatus.SKIPPED, LINKEDIN_* env vars, Wave 0 test scaffolds (legitimacy checkpoint)
@@ -99,7 +99,10 @@ Cross-cutting constraints:
 - [x] 03-03-PLAN.md — FastAPI /apply router: POST linkedin-easy-apply, GET daily-linkedin-count, GET queued-linkedin-jobs; schemas + registration
 
 **Wave 4** *(blocked on Wave 3)*
-- [~] 03-04-PLAN.md — n8n linkedin-easy-apply workflow (daily cap, randomized timing, Telegram routing), gmail-ingest apply_type fix (D-02), session save script, live fingerprint + apply checkpoint (PAUSED: human checkpoint Task 3)
+- [x] 03-04-PLAN.md — n8n linkedin-easy-apply workflow (daily cap, randomized timing, Telegram routing), gmail-ingest apply_type fix (D-02), session save script, live fingerprint + apply checkpoint *(Task 3 human checkpoint VALIDATED — SDUI drift discovered here triggered 03-05)*
+
+**Gap Closure** *(SDUI rework after live checkpoint revealed dead selector + frame + reCAPTCHA gate)*
+- [x] 03-05-PLAN.md — Fix Easy Apply against live SDUI: text/aria selector (dead class XPath removed), frame-aware modal navigation, per-iteration reCAPTCHA-Enterprise pause -> NEEDS_HUMAN + Telegram, paused_human response. 11 unit tests GREEN; Task 3 live validation PASS. *Live field-fill against shadow-DOM controls UNVERIFIED — deferred to VPS phase.*
 
 ### Phase 4: Dashboard CRM and Additional Sources
 **Goal**: The web dashboard shows every application with status, stats, and job detail; Stefano can update statuses and add notes; Gmail history for the last 6 months is imported on first run; Kalibrr and generic web forms are active submission channels
@@ -122,5 +125,5 @@ Cross-cutting constraints:
 |-------|----------------|--------|-----------|
 | 1. Foundation | 5/5 | Complete   | 2026-05-27 |
 | 2. Ingest, Generate, and Email Apply | 4/5 | In Progress|  |
-| 3. LinkedIn Easy Apply | 3/4 (4th paused at human checkpoint) | In Progress|  |
+| 3. LinkedIn Easy Apply | 5/5 | Complete (live field-fill deferred to VPS) | 2026-05-29 |
 | 4. Dashboard CRM and Additional Sources | 0/TBD | Not started | - |

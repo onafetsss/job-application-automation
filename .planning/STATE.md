@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: "Phase 03 Plan 04 — Task 3 human checkpoint: session save, fingerprint, live apply verification"
+status: phase_complete
+stopped_at: "Phase 03 (LinkedIn Easy Apply) DONE — 03-05 SDUI rework validated; live field-fill deferred to VPS phase"
 last_updated: "2026-05-29T00:00:00Z"
 last_activity: 2026-05-29
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 14
-  completed_plans: 13
-  percent: 50
+  completed_phases: 3
+  total_plans: 15
+  completed_plans: 15
+  percent: 75
 ---
 
 # Project State
@@ -25,12 +25,17 @@ See: .planning/PROJECT.md (updated 2026-05-26)
 
 ## Current Position
 
-Phase: 03 (linkedin-easy-apply) — EXECUTING
-Plan: 4 of 4 — PAUSED at Task 3 (human checkpoint)
-Status: Awaiting human action (LinkedIn session save + fingerprint + live apply)
+Phase: 03 (linkedin-easy-apply) — DONE
+Plan: 5 of 5 complete (03-05 SDUI rework; 03-04 Task 3 human checkpoint VALIDATED)
+Status: Phase 03 complete — next is Phase 04 (Dashboard CRM and Additional Sources)
 Last activity: 2026-05-29
 
-Progress: [█████████░] 93%
+**Phase 03 caveat:** Live field-fill against the Easy Apply modal's custom/shadow-DOM
+controls is UNVERIFIED — confirmable only by a supervised apply (which pauses at reCAPTCHA
+on most jobs). Deferred to the VPS phase (VNC for remote challenge-solving). LinkedIn applies
+are human-in-the-loop on reCAPTCHA by design, not unattended.
+
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -74,6 +79,10 @@ Recent decisions affecting current work:
 - Phase 3 Plan 04: resolve_apply_type placed in src/ingestion/gmail_client.py (matches test candidate import list)
 - Phase 3 Plan 04: Telegram success uses cross-node reference to Get Next LinkedIn Job because POST response only returns {status, job_id}
 - Phase 3 Plan 04: storage_state JSON export is non-fatal fallback — persistent_context user_data_dir is primary session store
+- Phase 3 Plan 05: Easy Apply trigger located by visible text / English aria-label substring — per-deploy hashed classes are dead, never matched
+- Phase 3 Plan 05: reCAPTCHA Enterprise -> NEEDS_HUMAN + paused_human (HTTP 200), audited, no auto-requeue, Telegram alert — applies are human-in-the-loop on reCAPTCHA by design
+- Phase 3 Plan 05: reCAPTCHA re-checked at top of every _navigate_modal iteration (mid-flow challenges caught), not once before first fill
+- Phase 3 Plan 05: live field-fill against shadow-DOM modal controls left UNVERIFIED — deferred to VPS+VNC phase
 
 ### Pending Todos
 
@@ -91,10 +100,10 @@ None yet.
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| *(none)* | | | |
+| Verification | Live field-fill against Easy Apply modal's custom/shadow-DOM controls (Email/Phone/Mobile) — UNVERIFIED; confirmable only by a supervised apply | Deferred to VPS+VNC phase | Phase 03 / 03-05 |
 
 ## Session Continuity
 
 Last session: 2026-05-29T00:00:00Z
-Stopped at: Phase 03 Plan 04 Task 3 checkpoint — awaiting human LinkedIn session save + fingerprint + live apply
-Resume file: .planning/phases/03-linkedin-easy-apply/03-04-SUMMARY.md
+Stopped at: Phase 03 (LinkedIn Easy Apply) DONE — 03-05 SDUI rework validated, phase ready to close; next is Phase 04
+Resume file: .planning/phases/03-linkedin-easy-apply/03-05-SUMMARY.md

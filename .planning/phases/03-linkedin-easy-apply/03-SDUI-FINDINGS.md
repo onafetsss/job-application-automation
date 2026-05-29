@@ -40,6 +40,16 @@
 4. **reCAPTCHA**: decide phase strategy — accept human-in-the-loop on challenge, detect+pause on reCAPTCHA, or reassess autonomy claim. Must be resolved before promising autonomous submission.
 5. **Re-validation**: keep `scripts/capture_sdui_apply.py` + `scripts/validate_easy_apply_selector.py` in the loop; new selectors are MEDIUM-confidence until confirmed live.
 
+## Residual risk after 03-05 (verified 2026-05-29 live checkpoint)
+Task 3 confirmed: new selector resolves (text "Easy Apply", 1 match), the modal opens to the
+Contact-info step, and reCAPTCHA Enterprise is reliably detected (frame url
+google.com/recaptcha/enterprise/anchor). HOWEVER: the modal's form controls (Email / Phone
+country / Mobile number) are NOT readable as plain input/select/textarea from any frame's DOM —
+they are custom/shadow-DOM components. So `fill_form_fields` field-fill fidelity against the live
+SDUI is UNVERIFIED. It can only be confirmed by a real supervised apply (which will pause at
+reCAPTCHA on most jobs anyway). Worst case is a graceful UnknownFormField → job SKIPPED, not a
+crash. Treat live field-fill as the next validation step (likely during the VPS phase with VNC).
+
 ## Artifacts
 - Screenshots: `data/li_debug.png`, `data/sdui_apply_debug.png` (gitignored)
 - Scripts: `scripts/validate_easy_apply_selector.py`, `scripts/capture_sdui_apply.py`
